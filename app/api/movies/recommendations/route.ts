@@ -49,29 +49,6 @@ export async function GET(request: NextRequest) {
     const query_embedding = createQueryVectorForMood(mood as MoodQuadrant)
     console.log("Generated query vector:", query_embedding)
 
-    // 2. Test basic Supabase connection first
-    console.log("Testing Supabase connection...")
-    const { data: testData, error: testError } = await supabase
-      .from("movies")
-      .select("count", { count: "exact", head: true })
-
-    if (testError) {
-      console.error("Supabase connection test failed:", testError)
-      return new Response(
-        JSON.stringify({
-          error: "Database connection failed",
-          details: testError.message,
-          hint: "Check your Supabase credentials and database setup",
-        }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        },
-      )
-    }
-
-    console.log("Supabase connection successful. Movie count:", testData)
-
     // Parse excluded movie IDs - handle null/undefined properly
     const excludedIds = validation.data.exclude
       ? validation.data.exclude
@@ -82,36 +59,25 @@ export async function GET(request: NextRequest) {
 
     console.log("Excluded movie IDs:", excludedIds)
 
-    // 3. Try the new function with exclusions first
-    console.log("Trying new RPC function with exclusions...")
+    // 3. Try the RPC function (your debug showed this works!)
+    console.log("Calling match_movies_by_mood RPC function...")
     let data, error
 
-    try {
-      const result = await supabase.rpc("match_movies_by_mood_with_exclusions", {
-        query_embedding: query_embedding,
-        excluded_movie_ids: excludedIds,
-        match_threshold: threshold,
-        match_count: limit,
-      })
-      data = result.data
-      error = result.error
-      console.log("New function returned:", data?.length || 0, "movies")
-    } catch (newFunctionError) {
-      console.log("New function not available, falling back to old function...")
-      // Fall back to the old function
-      const result = await supabase.rpc("match_movies_by_mood", {
-        query_embedding: query_embedding,
-        match_threshold: threshold,
-        match_count: limit + excludedIds.length, // Request more to account for exclusions
-      })
-      data = result.data
-      error = result.error
+    // Since your debug script showed the basic function works, let's use it
+    const result = await supabase.rpc("match_movies_by_mood", {
+      query_embedding: `[${query_embedding.join(",")}]`, // Fix: Ensure string format
+      match_threshold: threshold,
+      match_count: limit + excludedIds.length, // Request more to account for exclusions
+    })
+    data = result.data
+    error = result.error
 
-      // Filter out excluded movies on the backend (old way)
-      if (data && excludedIds.length > 0) {
-        data = data.filter((movie) => !excludedIds.includes(movie.id))
-        console.log(`Filtered out excluded movies, ${data.length} remaining`)
-      }
+    console.log("RPC function returned:", data?.length || 0, "movies")
+
+    // Filter out excluded movies on the backend
+    if (data && excludedIds.length > 0) {
+      data = data.filter((movie: any) => !excludedIds.includes(movie.id))
+      console.log(`Filtered out excluded movies, ${data.length} remaining`)
     }
 
     if (error) {
@@ -123,7 +89,7 @@ export async function GET(request: NextRequest) {
           JSON.stringify({
             error: "Database function not found",
             details: "The required database functions don't exist in your database",
-            hint: "Run the SQL scripts: scripts/01-create-match-movies-by-mood.sql and scripts/03-create-match-movies-with-exclusions.sql",
+            hint: "Run the SQL scripts: scripts/01-create-match-movies-by-mood.sql",
           }),
           {
             status: 500,
@@ -148,25 +114,14 @@ export async function GET(request: NextRequest) {
     if (!data || data.length === 0) {
       console.log("No movies found, trying with lower threshold...")
 
-      // Try with a much lower threshold
-      try {
-        const fallbackResult = await supabase.rpc("match_movies_by_mood_with_exclusions", {
-          query_embedding: query_embedding,
-          excluded_movie_ids: excludedIds,
-          match_threshold: 0.1,
-          match_count: limit,
-        })
-        data = fallbackResult.data
-        error = fallbackResult.error
-      } catch {
-        // Fall back to old function with low threshold
-        const fallbackResult = await supabase.rpc("match_movies_by_mood", {
-          query_embedding: query_embedding,
-          match_threshold: 0.1,
-          match_count: limit + excludedIds.length,
-        })
-        data = fallbackResult.data?.filter((movie) => !excludedIds.includes(movie.id)) || []
-      }
+      // Try with a much lower threshold (your debug showed this works)
+      const fallbackResult = await supabase.rpc("match_movies_by_mood", {
+        query_embedding: `[${query_embedding.join(",")}]`,
+        match_threshold: 0.1, // Much lower threshold
+        match_count: limit + excludedIds.length,
+      })
+      data = fallbackResult.data?.filter((movie: any) => !excludedIds.includes(movie.id)) || []
+      error = fallbackResult.error
 
       if (error) {
         console.error("Fallback query also failed:", error)
@@ -194,7 +149,7 @@ export async function GET(request: NextRequest) {
     console.log("Fetching TMDb details for", data.length, "movies...")
     const tmdbService = await import("@/lib/tmdb")
     const detailedMovies = await Promise.all(
-      data.slice(0, 5).map(async (movie: any) => {
+      data.slice(0, limit).map(async (movie: any) => {
         try {
           console.log(`Fetching details for movie ${movie.id}: ${movie.title}`)
           const details = await tmdbService.getMovieDetails(movie.id, "US")
