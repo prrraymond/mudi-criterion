@@ -3,10 +3,10 @@ import { createClient } from "@supabase/supabase-js"
 import { z } from "zod"
 import { createQueryVectorForMood, type MoodQuadrant } from "@/lib/mood-vectors"
 
-// Create a Supabase client for route handlers
+// Create a Supabase client for route handlers - USE SERVICE ROLE KEY
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseKey)
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // Zod schema for query validation
 const recommendationQuerySchema = z.object({
