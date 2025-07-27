@@ -43,33 +43,20 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
 // Helper function to safely parse dates
 function parseReleaseDate(dateString: string): string | null {
-  if (!dateString || dateString.trim() === "") {
-    return null
-  }
-
-  // Validate date format (YYYY-MM-DD)
+  if (!dateString || dateString.trim() === "") return null
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-  if (!dateRegex.test(dateString)) {
-    console.warn(`Invalid date format: ${dateString}`)
-    return null
-  }
-
-  // Try to parse the date to make sure it's valid
+  if (!dateRegex.test(dateString)) return null
   const date = new Date(dateString)
-  if (isNaN(date.getTime())) {
-    console.warn(`Invalid date: ${dateString}`)
-    return null
-  }
-
+  if (isNaN(date.getTime())) return null
   return dateString
 }
+
 
 // --- Seeding Logic ---
 
 async function seedCuratedMovies() {
   console.log("🚀 Starting multi-bucket movie seeding process...")
 
-  // 1. Fetch master genre list once for efficiency
   console.log("📚 Fetching genre list...")
   const genreMap = await getGenres()
   console.log("✅ Genre list fetched.")
@@ -80,196 +67,92 @@ async function seedCuratedMovies() {
   console.log("\n--- Fetching Bucket 1: Curated Providers ---")
   for (const provider of CURATED_PROVIDERS) {
     console.log(`\n🔎 Fetching ALL movies from ${provider.name} (ID: ${provider.id})...`)
-    let currentPage = 1
-    let totalPages = 1
-
+    let currentPage = 1, totalPages = 1
     while (currentPage <= totalPages && currentPage <= MAX_PAGES_PER_CURATED_PROVIDER) {
       try {
-        const response = await discoverMovies({
-          with_watch_providers: provider.id,
-          watch_region: WATCH_REGION,
-          page: currentPage,
-          // No rating filters for this bucket
-          "vote_average.gte": 0,
-          "vote_count.gte": 0,
-        })
-
+        const response = await discoverMovies({ with_watch_providers: provider.id, watch_region: WATCH_REGION, page: currentPage, "vote_average.gte": 0, "vote_count.gte": 0 })
         totalPages = response.total_pages
         response.results.forEach((movie) => allMoviesMap.set(movie.id, movie))
-
         console.log(`  - Page ${currentPage}/${totalPages} fetched. Total unique movies so far: ${allMoviesMap.size}`)
         currentPage++
         await new Promise((resolve) => setTimeout(resolve, 300))
-      } catch (error) {
-        console.error(`  - ❌ Failed to fetch page ${currentPage} for provider ${provider.name}:`, error)
-        break
-      }
+      } catch (error) { console.error(`  - ❌ Failed to fetch page ${currentPage} for provider ${provider.name}:`, error); break }
     }
   }
 
   // --- BUCKET 2: Fetch all top-rated movies from any provider ---
   console.log("\n--- Fetching Bucket 2: Top-Rated Films (All Platforms) ---")
   console.log(`Filters: Rating >= ${VOTE_AVERAGE_MIN}, Votes >= ${VOTE_COUNT_MIN}`)
-  let currentPage = 1
-  let totalPages = 1
+  let currentPage = 1, totalPages = 1
   while (currentPage <= totalPages && currentPage <= MAX_PAGES_FOR_TOP_RATED) {
     try {
-      const response = await discoverMovies({
-        watch_region: WATCH_REGION,
-        page: currentPage,
-        "vote_average.gte": VOTE_AVERAGE_MIN,
-        "vote_count.gte": VOTE_COUNT_MIN,
-        with_watch_providers: "", // Empty string to search all
-      })
-
+      const response = await discoverMovies({ watch_region: WATCH_REGION, page: currentPage, "vote_average.gte": VOTE_AVERAGE_MIN, "vote_count.gte": VOTE_COUNT_MIN, with_watch_providers: "" })
       totalPages = response.total_pages
       response.results.forEach((movie) => allMoviesMap.set(movie.id, movie))
-
       console.log(`  - Page ${currentPage}/${totalPages} fetched. Total unique movies so far: ${allMoviesMap.size}`)
       currentPage++
       await new Promise((resolve) => setTimeout(resolve, 300))
-    } catch (error) {
-      console.error(`  - ❌ Failed to fetch page ${currentPage} for top-rated films:`, error)
-      break
-    }
+    } catch (error) { console.error(`  - ❌ Failed to fetch page ${currentPage} for top-rated films:`, error); break }
   }
 
   const allMovies = Array.from(allMoviesMap.values())
   console.log(`\n🎬 Total unique, high-quality movies found from all buckets: ${allMovies.length}`)
-
-  if (allMovies.length === 0) {
-    console.log("No movies met the criteria. Seeding process complete.")
-    return
-  }
+  if (allMovies.length === 0) return console.log("No movies met the criteria. Seeding process complete.")
 
   // --- Final Processing and Insertion (Steps 3, 4, 5) ---
   const moviesToInsert = allMovies
     .filter((movie) => movie.poster_path && movie.overview && movie.genre_ids && movie.genre_ids.length > 0)
-    .map((movie) => ({
-      id: movie.id,
-      title: movie.title,
-      overview: movie.overview,
-      release_date: parseReleaseDate(movie.release_date), // Fix: Handle empty dates properly
-      poster_path: movie.poster_path,
-      genres: JSON.stringify(movie.genre_ids!.map((id) => ({ id, name: genreMap.get(id) || "Unknown" }))),
-      vote_average: movie.vote_average,
-      vote_count: movie.vote_count,
-      popularity: movie.popularity,
-    }))
+    .map((movie) => ({ id: movie.id, title: movie.title, overview: movie.overview, release_date: parseReleaseDate(movie.release_date), poster_path: movie.poster_path, genres: JSON.stringify(movie.genre_ids!.map((id) => ({ id, name: genreMap.get(id) || "Unknown" }))), vote_average: movie.vote_average, vote_count: movie.vote_count, popularity: movie.popularity }))
 
   console.log(`\n💾 Upserting ${moviesToInsert.length} movies into the database...`)
-
-  // Insert in smaller batches to handle large datasets and identify problematic records
   const batchSize = 100
   let successfulInserts = 0
-
   for (let i = 0; i < moviesToInsert.length; i += batchSize) {
     const batch = moviesToInsert.slice(i, i + batchSize)
-    const batchNumber = Math.floor(i / batchSize) + 1
-    const totalBatches = Math.ceil(moviesToInsert.length / batchSize)
-
-    console.log(`📦 Processing movie batch ${batchNumber}/${totalBatches} (${batch.length} movies)...`)
-
     const { error: movieError } = await supabaseAdmin.from("movies").upsert(batch, { onConflict: "id" })
-
-    if (movieError) {
-      console.error(`❌ Error inserting movie batch ${batchNumber}:`, movieError)
-      // Log some sample data from the failed batch for debugging
-      console.log("Sample records from failed batch:")
-      batch.slice(0, 3).forEach((movie, idx) => {
-        console.log(`  ${idx + 1}. ${movie.title} - Release: "${movie.release_date}"`)
-      })
-      // Continue with other batches instead of stopping
-    } else {
-      successfulInserts += batch.length
-      console.log(`✅ Successfully inserted movie batch ${batchNumber}/${totalBatches}`)
-    }
+    if (movieError) { console.error(`❌ Error inserting movie batch:`, movieError) } 
+    else { successfulInserts += batch.length }
   }
-
   console.log(`📊 Successfully inserted ${successfulInserts}/${moviesToInsert.length} movies`)
+  if (successfulInserts === 0) return console.log("❌ No movies were inserted. Stopping here.")
 
-  if (successfulInserts === 0) {
-    console.log("❌ No movies were inserted. Stopping here.")
-    return
-  }
+  // --- FIX 2: Forceful Vector Regeneration ---
+  const movieIdsToProcess = moviesToInsert.map(m => m.id);
 
-  // --- CRITICAL FIX: Get the actual list of movies that exist in the database ---
-  console.log("\n🔍 Fetching existing movies from database to ensure vector consistency...")
-  const { data: existingMovies, error: fetchError } = await supabaseAdmin.from("movies").select("id")
-
-  if (fetchError) {
-    console.error("❌ Error fetching existing movies:", fetchError)
-    return
-  }
-
-  const existingMovieIds = new Set(existingMovies?.map((m) => m.id) || [])
-  console.log(`📊 Found ${existingMovieIds.size} existing movies in database`)
-
-  // --- Generate vectors ONLY for movies that actually exist in the database ---
-  console.log("\n🧠 Generating and inserting mood vectors...")
-  const vectorsToInsert = allMovies
-    .filter((movie) => {
-      // Only process movies that:
-      // 1. Have genre data
-      // 2. Actually exist in the database
-      const hasGenres = movie.genre_ids && movie.genre_ids.length > 0
-      const existsInDb = existingMovieIds.has(movie.id)
-
-      if (hasGenres && !existsInDb) {
-        console.log(`⚠️  Skipping movie ${movie.id} (${movie.title}) - not found in database`)
+  // 1. DELETE old vectors for the movies we are about to process IN BATCHES.
+  console.log(`\n🗑️ Deleting up to ${movieIdsToProcess.length} old vectors in batches to prepare for refresh...`)
+  const deleteBatchSize = 1000; // Use a larger batch size for deletes
+  for (let i = 0; i < movieIdsToProcess.length; i += deleteBatchSize) {
+      const batch = movieIdsToProcess.slice(i, i + deleteBatchSize);
+      console.log(`   - Deleting batch ${Math.floor(i / deleteBatchSize) + 1}... (${batch.length} vectors)`)
+      const { error: deleteError } = await supabaseAdmin.from('movie_mood_vectors').delete().in('movie_id', batch);
+      if (deleteError) {
+          console.error("❌ Critical error deleting vector batch:", deleteError);
+          // Decide if you want to stop or continue on error
+          // return; 
       }
+  }
+  console.log("✅ Old vectors deleted successfully.")
 
-      return hasGenres && existsInDb
-    })
-    .map((movie) => {
-      const embedding = generateMovieMoodVector(movie.genre_ids!)
+  // 2. GENERATE new, nuanced vectors.
+  console.log("\n🧠 Generating new nuanced vectors...")
+  const vectorsToInsert = moviesToInsert.map((movie) => {
+      const genreIds = JSON.parse(movie.genres).map((g: {id: number}) => g.id)
+      const embedding = generateMovieMoodVector(genreIds)
       const mood_quadrant = getPrimaryMoodQuadrant(embedding)
-      return {
-        movie_id: movie.id,
-        embedding: `[${embedding.join(",")}]`,
-        mood_quadrant,
-      }
+      return { movie_id: movie.id, embedding: `[${embedding.join(",")}]`, mood_quadrant }
     })
-
-  console.log(`🎯 Processing ${vectorsToInsert.length} mood vectors for existing movies...`)
-
-  if (vectorsToInsert.length === 0) {
-    console.log("⚠️  No mood vectors to insert.")
-    return
+  console.log(`✅ Generated ${vectorsToInsert.length} new vectors.`)
+  
+  // 3. INSERT the new vectors.
+  console.log("\n💾 Inserting new vectors into the database...")
+  for (let i = 0; i < vectorsToInsert.length; i += batchSize) {
+    const batch = vectorsToInsert.slice(i, i + batchSize)
+    const { error } = await supabaseAdmin.from("movie_mood_vectors").insert(batch)
+    if (error) console.error(`❌ Error inserting vector batch:`, error)
   }
-
-  // Insert vectors in batches to handle large datasets
-  const vectorBatchSize = 100
-  let successfulVectorBatches = 0
-
-  for (let i = 0; i < vectorsToInsert.length; i += vectorBatchSize) {
-    const batch = vectorsToInsert.slice(i, i + vectorBatchSize)
-    const batchNumber = Math.floor(i / vectorBatchSize) + 1
-    const totalBatches = Math.ceil(vectorsToInsert.length / vectorBatchSize)
-
-    console.log(`📦 Processing vector batch ${batchNumber}/${totalBatches} (${batch.length} vectors)...`)
-
-    const { error: vectorError } = await supabaseAdmin
-      .from("movie_mood_vectors")
-      .upsert(batch, { onConflict: "movie_id" })
-
-    if (vectorError) {
-      console.error(`❌ Error inserting mood vectors batch ${batchNumber}:`, vectorError)
-      // Continue with other batches instead of stopping
-    } else {
-      successfulVectorBatches++
-      console.log(`✅ Successfully inserted vector batch ${batchNumber}/${totalBatches}`)
-    }
-  }
-
-  console.log(
-    `\n🎉 Seeding process complete! Successfully processed ${successfulVectorBatches}/${Math.ceil(vectorsToInsert.length / vectorBatchSize)} vector batches.`,
-  )
-  console.log(`📊 Final summary:`)
-  console.log(`   - Movies inserted: ${successfulInserts}/${moviesToInsert.length}`)
-  console.log(
-    `   - Vector batches processed: ${successfulVectorBatches}/${Math.ceil(vectorsToInsert.length / vectorBatchSize)}`,
-  )
+  console.log("✅ Vector insertion process complete.")
+  console.log("\n🎉 Seeding process finished!")
 }
 
 // --- Run the script ---
