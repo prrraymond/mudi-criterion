@@ -48,13 +48,22 @@ export async function GET(request: NextRequest) {
 
   try {
     const query_embedding = createQueryVectorForMood(mood as MoodQuadrant);
+
+    console.log("🔍 DEBUG - Query details:", {
+      mood,
+      query_embedding,
+      embedding_string: `[${query_embedding.join(",")}]`,
+      threshold,
+      excludedIds
+    });
+
     const excludedIds = exclude ? exclude.split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
 
     // --- Primary Query ---
     let { data, error } = await supabase.rpc("match_movies_by_mood", {
-      query_embedding: `[${query_embedding.join(",")}]`,
+      query_embedding: query_embedding.join(","),  // "0.2,0.0,0.7,0.1"
       match_threshold: threshold,
-      match_count: limit + excludedIds.length, // Fetch extra to account for filtering
+      match_count: limit + excludedIds.length
     });
 
     if (error) {
@@ -64,6 +73,12 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    console.log("🔍 DEBUG - Primary query result:", {
+      hasData: !!data,
+      dataLength: data?.length,
+      error
+    });
 
     let filteredData = data ? data.filter((movie: any) => !excludedIds.includes(movie.id)) : [];
 
@@ -87,6 +102,12 @@ export async function GET(request: NextRequest) {
       
       filteredData = fallbackResult.data ? fallbackResult.data.filter((movie: any) => !excludedIds.includes(movie.id)) : [];
     }
+
+    console.log("🔍 DEBUG - Fallback query result:", {
+      hasData: !!fallbackResult.data,
+      dataLength: fallbackResult.data?.length,
+      error: fallbackResult.error
+    });
 
     // If there are STILL no results, then the vectors table is likely empty or there's a fundamental issue.
     if (filteredData.length === 0) {
