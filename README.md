@@ -1,108 +1,118 @@
-# Emotional Movie Recommender
+# Mood Movie Recommender
 
-An AI-powered movie recommendation system that suggests films based on your current emotional state and mood.
+An AI-powered movie recommendation app that suggests films based on your current emotional state.
 
 ## Features
 
-- **Mood-Based Recommendations**: Get movie suggestions based on your emotional quadrant (high/low energy × pleasant/unpleasant)
-- **Personalized Experience**: Create a profile and track your movie preferences
-- **Rich Movie Data**: Powered by The Movie Database (TMDb) API
-- **User Authentication**: Secure login with Supabase Auth
-- **Responsive Design**: Works seamlessly on desktop and mobile
+- **Mood-based recommendations**: Get movie suggestions based on your energy level and emotional state
+- **Personalized experience**: Create a profile and track your viewing history
+- **Smart filtering**: Exclude movies you've already seen
+- **Rich movie data**: Powered by TMDB API with detailed movie information
 
 ## Tech Stack
 
 - **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
-- **Backend**: Supabase (PostgreSQL database, authentication, real-time)
-- **Movie Data**: The Movie Database (TMDb) API
+- **Database**: Supabase (PostgreSQL with vector similarity search)
+- **Authentication**: Supabase Auth
+- **Movie Data**: The Movie Database (TMDB) API
 - **Deployment**: Vercel
 
-## Setup Instructions
+## Setup
 
-### 1. Clone the Repository
+1. **Clone the repository**
+   \`\`\`bash
+   git clone <your-repo-url>
+   cd mood-movie-recommender
+   \`\`\`
 
-\`\`\`bash
-git clone <your-repo-url>
-cd mood-movie-recommender
-npm install
-\`\`\`
+2. **Install dependencies**
+   \`\`\`bash
+   npm install
+   \`\`\`
 
-### 2. Environment Variables
+3. **Set up environment variables**
+   
+   Copy `.env.example` to `.env.local` and fill in your credentials:
+   \`\`\`bash
+   cp .env.example .env.local
+   \`\`\`
 
-Create a `.env.local` file in the root directory:
+   Required environment variables:
+   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key (for server-side operations)
+   - `TMDB_API_READ_ACCESS_TOKEN`: Your TMDB API read access token
+
+4. **Set up the database**
+   
+   Run the SQL scripts in order to create the database schema:
+   \`\`\`bash
+   # Create the basic schema
+   npx tsx scripts/00-create-database-schema.sql
+   
+   # Create the mood matching function
+   npx tsx scripts/01-create-match-movies-by-mood.sql
+   
+   # Create user tables
+   npx tsx scripts/02-create-user-actions-tables.sql
+   \`\`\`
+
+5. **Seed the database**
+   \`\`\`bash
+   npx tsx scripts/seed-production-quick.ts
+   \`\`\`
+
+6. **Run the development server**
+   \`\`\`bash
+   npm run dev
+   \`\`\`
+
+## Environment Variables
+
+Create a `.env.local` file with the following variables:
 
 \`\`\`env
-# Supabase Configuration
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-
-# TMDb API
-TMDB_API_READ_ACCESS_TOKEN=your_tmdb_read_access_token
+TMDB_API_READ_ACCESS_TOKEN=your_tmdb_api_token
 \`\`\`
-
-### 3. Database Setup
-
-Run the SQL scripts in order to set up your Supabase database:
-
-\`\`\`bash
-# Run these scripts in your Supabase SQL editor
-scripts/00-create-database-schema.sql
-scripts/01-create-match-movies-by-mood.sql
-scripts/02-create-user-actions-tables.sql
-scripts/04-create-user-profiles-fixed.sql
-\`\`\`
-
-### 4. Seed the Database
-
-\`\`\`bash
-# Seed with movie data
-npx tsx scripts/seed-production-quick.ts
-\`\`\`
-
-### 5. Run Development Server
-
-\`\`\`bash
-npm run dev
-\`\`\`
-
-Visit `http://localhost:3000` to see the application.
 
 ## Deployment
 
-The app is configured for automatic deployment on Vercel when you push to the main branch.
+This app is configured for deployment on Vercel:
 
-### Environment Variables in Vercel
+1. **Connect your GitHub repository to Vercel**
+2. **Add environment variables in Vercel dashboard**
+3. **Deploy automatically on push to main branch**
 
-Add these environment variables in your Vercel dashboard:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `TMDB_API_READ_ACCESS_TOKEN`
+Make sure to add all environment variables in your Vercel project settings.
 
 ## API Endpoints
 
-- `GET /api/movies/recommendations` - Get mood-based movie recommendations
-  - Query parameters: `mood`, `limit`, `threshold`, `exclude`
+- `GET /api/movies/recommendations` - Get movie recommendations based on mood
+  - Query parameters:
+    - `mood`: One of `high-energy-pleasant`, `high-energy-unpleasant`, `low-energy-pleasant`, `low-energy-unpleasant`
+    - `limit`: Number of recommendations (1-50, default: 20)
+    - `threshold`: Similarity threshold (0.01-1.0, default: 0.6)
+    - `exclude`: Comma-separated list of movie IDs to exclude
 
-## Project Structure
+## Database Schema
 
-\`\`\`
-├── app/                    # Next.js app directory
-├── components/            # React components
-├── lib/                   # Utility functions and services
-├── scripts/              # Database and utility scripts
-└── public/               # Static assets
-\`\`\`
+The app uses several key tables:
+- `movies`: Core movie data from TMDB
+- `movie_mood_vectors`: Vector embeddings for mood-based similarity search
+- `user_profiles`: User preferences and settings
+- `user_movie_actions`: User interactions (watched, liked, etc.)
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Submit a pull request
+4. Test thoroughly
+5. Submit a pull request
 
 ## License
 
-MIT License
+MIT License - see LICENSE file for details
