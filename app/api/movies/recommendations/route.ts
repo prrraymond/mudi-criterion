@@ -47,23 +47,15 @@ export async function GET(request: NextRequest) {
   const { mood, limit, threshold, exclude } = validation.data;
 
   try {
+// In your route.ts, after creating the query_embedding
     const query_embedding = createQueryVectorForMood(mood as MoodQuadrant);
-    
-    // MOVED: Define excludedIds BEFORE using it
-    const excludedIds = exclude ? exclude.split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
 
-    console.log("🔍 DEBUG - Query details:", {
-      mood,
-      query_embedding,
-      embedding_string: `[${query_embedding.join(",")}]`,
-      threshold,
-      excludedIds
-    });
+    // Format numbers to ensure they're all floats
+    const formattedEmbedding = query_embedding.map(n => n.toFixed(1));
 
-    // --- Primary Query ---
-    // FIXED: Use consistent format with brackets
+    // Use the formatted version
     let { data, error } = await supabase.rpc("match_movies_by_mood", {
-      query_embedding: `[${query_embedding.join(",")}]`,  // Use brackets like fallback
+      query_embedding: `[${formattedEmbedding.join(",")}]`,  // Will be "[0.2,0.0,0.7,0.1]"
       match_threshold: threshold,
       match_count: limit + excludedIds.length
     });
