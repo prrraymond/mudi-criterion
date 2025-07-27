@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createQueryVectorForMood, type MoodQuadrant } from "@/lib/mood-vectors";
-import * as tmdbService from "@/lib/tmdb"; // Add this import back
+import * as tmdbService from "@/lib/tmdb";
 
 // Don't use ! operator - let them be undefined
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -48,6 +48,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const query_embedding = createQueryVectorForMood(mood as MoodQuadrant);
+    
+    // MOVED: Define excludedIds BEFORE using it
+    const excludedIds = exclude ? exclude.split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
 
     console.log("🔍 DEBUG - Query details:", {
       mood,
@@ -57,11 +60,10 @@ export async function GET(request: NextRequest) {
       excludedIds
     });
 
-    const excludedIds = exclude ? exclude.split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
-
     // --- Primary Query ---
+    // FIXED: Use consistent format with brackets
     let { data, error } = await supabase.rpc("match_movies_by_mood", {
-      query_embedding: query_embedding.join(","),  // "0.2,0.0,0.7,0.1"
+      query_embedding: `[${query_embedding.join(",")}]`,  // Use brackets like fallback
       match_threshold: threshold,
       match_count: limit + excludedIds.length
     });
@@ -101,13 +103,14 @@ export async function GET(request: NextRequest) {
       }
       
       filteredData = fallbackResult.data ? fallbackResult.data.filter((movie: any) => !excludedIds.includes(movie.id)) : [];
+      
+      // MOVED: Log fallback result INSIDE the if block where fallbackResult exists
+      console.log("🔍 DEBUG - Fallback query result:", {
+        hasData: !!fallbackResult.data,
+        dataLength: fallbackResult.data?.length,
+        error: fallbackResult.error
+      });
     }
-
-    console.log("🔍 DEBUG - Fallback query result:", {
-      hasData: !!fallbackResult.data,
-      dataLength: fallbackResult.data?.length,
-      error: fallbackResult.error
-    });
 
     // If there are STILL no results, then the vectors table is likely empty or there's a fundamental issue.
     if (filteredData.length === 0) {
