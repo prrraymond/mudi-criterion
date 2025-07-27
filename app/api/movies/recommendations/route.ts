@@ -49,9 +49,20 @@ export async function GET(request: NextRequest) {
   try {
 // In your route.ts, after creating the query_embedding
     const query_embedding = createQueryVectorForMood(mood as MoodQuadrant);
+    
+    // ADD THIS LINE BACK - Define excludedIds!
+    const excludedIds = exclude ? exclude.split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
 
     // Format numbers to ensure they're all floats
     const formattedEmbedding = query_embedding.map(n => n.toFixed(1));
+
+    console.log("🔍 DEBUG - Query details:", {
+      mood,
+      query_embedding,
+      embedding_string: `[${formattedEmbedding.join(",")}]`,
+      threshold,
+      excludedIds
+    });
 
     // Use the formatted version
     let { data, error } = await supabase.rpc("match_movies_by_mood", {
