@@ -9,6 +9,26 @@ const config = {
     "./src/**/*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
   ],
+  safelist: [
+    // Prevent purging of dynamic mood-based classes
+    { pattern: /^(bg-|from-|to-|border-|shadow-|hover:border-|hover:shadow-)(orange|red|blue|purple|yellow|pink|teal|indigo|white|green|black)-(100|200|300|400|500|600|700|800|900)\/(5|10|15|20|25|30|40|50|60|80|90)$/ },
+    'bg-gradient-to-r',
+    'backdrop-blur-sm',
+    'line-clamp-2',
+    'line-clamp-3',
+    'line-clamp-4',
+    'object-contain',
+    'object-cover',
+    'transform',
+    'hover:scale-105',
+    'hover:scale-110',
+    'hover:-translate-y-1',
+    'transition-all',
+    'duration-300',
+    'duration-500',
+    'duration-700',
+    'ease-out',
+  ],
   theme: {
     container: {
       center: true,
