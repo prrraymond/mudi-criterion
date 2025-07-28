@@ -66,9 +66,18 @@ export async function GET(request: NextRequest) {
 
     // Use the formatted version
     let { data, error } = await supabase.rpc("match_movies_by_mood", {
-      query_embedding: `[${formattedEmbedding.join(",")}]`,  // Will be "[0.2,0.0,0.7,0.1]"
+      query_embedding: `[${formattedEmbedding.join(",")}]`,
       match_threshold: threshold,
       match_count: limit + excludedIds.length
+    });
+
+    // ADD THESE DEBUG LINES
+    console.log("🔍 DEBUG - RPC Raw Response:", {
+      data: JSON.stringify(data),
+      error: JSON.stringify(error),
+      dataType: typeof data,
+      isArray: Array.isArray(data),
+      actualLength: data?.length
     });
 
     if (error) {
