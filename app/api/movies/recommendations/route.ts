@@ -146,4 +146,5 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+  console.log("🔍 DEBUG - RPC Response:", { data, error, dataType: typeof data, dataContent: JSON.stringify(data) });
 }
