@@ -195,115 +195,109 @@ export default function HomePage() {
 
       {/* Main Content */}
       <main className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center p-4">
-// Replace the existing home tab content section (around line 160-220) with:
-// This replaces everything from the opening {activeTab === "home" && ( 
-// to the closing )} for that conditional
+        {activeTab === "home" && (
+          <>
+            {step < 4 ? (
+              <Card className="w-full max-w-md bg-black text-white shadow-md rounded-lg border border-white/10">
+                <CardContent className="pt-6 px-6 pb-6">
+                  <div className="mb-8 text-center">
+                    <h1 className="text-3xl tracking-tight text-white">
+                      <span className="font-medium">Mudi</span>
+                      <span className="font-serif"> Criterions</span>
+                    </h1>
+                    <div className="h-px w-16 bg-white/30 mx-auto my-3"></div>
+                    <p className="text-gray-400 mt-1 font-light tracking-wide">
+                      {step === 1
+                        ? "What are you feeling right now?"
+                        : step === 2
+                          ? "Why might you be feeling this way?"
+                          : "What would you like to do with this feeling?"}
+                    </p>
+                  </div>
 
-      {activeTab === "home" && (
-        <>
-          {step < 4 ? (
-            // Steps 1-3: Keep the narrow card layout
-            <Card className="w-full max-w-md bg-black text-white shadow-md rounded-lg border border-white/10">
-              <CardContent className="pt-6 px-6 pb-6">
-                <div className="mb-8 text-center">
+                  <div className="my-6">
+                    {step === 1 && <MoodMeter selectedMood={selectedMood} setSelectedMood={setSelectedMood} />}
+                    {step === 2 && (
+                      <ReasonSelector
+                        selectedReason={selectedReason}
+                        setSelectedReason={setSelectedReason}
+                        selectedMood={selectedMood}
+                      />
+                    )}
+                    {step === 3 && (
+                      <IntentionSelector
+                        selectedIntention={selectedIntention}
+                        setSelectedIntention={setSelectedIntention}
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex justify-between mt-10 border-t border-white/10 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={prevStep}
+                      disabled={step === 1}
+                      className="flex items-center gap-1 border-white/20 text-white hover:bg-white/10 hover:text-white bg-transparent"
+                    >
+                      <ArrowLeft className="h-4 w-4" /> Back
+                    </Button>
+
+                    <Button
+                      onClick={nextStep}
+                      disabled={
+                        (step === 1 && !selectedMood) ||
+                        (step === 2 && !selectedReason) ||
+                        (step === 3 && !selectedIntention)
+                      }
+                      className="flex items-center gap-1 bg-white text-black hover:bg-white/90"
+                    >
+                      Next <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="w-full">
+                {/* Header section in narrow format */}
+                <div className="w-full max-w-md mx-auto mb-8 text-center">
                   <h1 className="text-3xl tracking-tight text-white">
                     <span className="font-medium">Mudi</span>
                     <span className="font-serif"> Criterions</span>
                   </h1>
                   <div className="h-px w-16 bg-white/30 mx-auto my-3"></div>
                   <p className="text-gray-400 mt-1 font-light tracking-wide">
-                    {step === 1
-                      ? "What are you feeling right now?"
-                      : step === 2
-                        ? "Why might you be feeling this way?"
-                        : "What would you like to do with this feeling?"}
+                    Films that might resonate with you
                   </p>
                 </div>
 
-                <div className="my-6">
-                  {step === 1 && <MoodMeter selectedMood={selectedMood} setSelectedMood={setSelectedMood} />}
-                  {step === 2 && (
-                    <ReasonSelector
-                      selectedReason={selectedReason}
-                      setSelectedReason={setSelectedReason}
-                      selectedMood={selectedMood}
-                    />
-                  )}
-                  {step === 3 && (
-                    <IntentionSelector
-                      selectedIntention={selectedIntention}
-                      setSelectedIntention={setSelectedIntention}
-                    />
-                  )}
-                </div>
+                {/* Movie recommendations in full width */}
+                {selectedMood && selectedReason && selectedIntention && (
+                  <MovieRecommendations mood={selectedMood} reason={selectedReason} intention={selectedIntention} />
+                )}
 
-                <div className="flex justify-between mt-10 border-t border-white/10 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={prevStep}
-                    disabled={step === 1}
-                    className="flex items-center gap-1 border-white/20 text-white hover:bg-white/10 hover:text-white bg-transparent"
-                  >
-                    <ArrowLeft className="h-4 w-4" /> Back
-                  </Button>
-
-                  <Button
-                    onClick={nextStep}
-                    disabled={
-                      (step === 1 && !selectedMood) ||
-                      (step === 2 && !selectedReason) ||
-                      (step === 3 && !selectedIntention)
-                    }
-                    className="flex items-center gap-1 bg-white text-black hover:bg-white/90"
-                  >
-                    Next <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            // Step 4: Wide layout for movie recommendations
-            <div className="w-full">
-              {/* Header section in narrow format */}
-              <div className="w-full max-w-md mx-auto mb-8 text-center">
-                <h1 className="text-3xl tracking-tight text-white">
-                  <span className="font-medium">Mudi</span>
-                  <span className="font-serif"> Criterions</span>
-                </h1>
-                <div className="h-px w-16 bg-white/30 mx-auto my-3"></div>
-                <p className="text-gray-400 mt-1 font-light tracking-wide">
-                  Films that might resonate with you
-                </p>
-              </div>
-
-              {/* Movie recommendations in full width */}
-              {selectedMood && selectedReason && selectedIntention && (
-                <MovieRecommendations mood={selectedMood} reason={selectedReason} intention={selectedIntention} />
-              )}
-
-              {/* Navigation in narrow format */}
-              <div className="w-full max-w-md mx-auto mt-8">
-                <div className="flex justify-between border-t border-white/10 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={prevStep}
-                    className="flex items-center gap-1 border-white/20 text-white hover:bg-white/10 hover:text-white bg-transparent"
-                  >
-                    <ArrowLeft className="h-4 w-4" /> Back
-                  </Button>
-                  <Button
-                    onClick={resetFlow}
-                    variant="outline"
-                    className="border-white/20 text-white hover:bg-white/10 hover:text-white bg-transparent"
-                  >
-                    Start Over
-                  </Button>
+                {/* Navigation in narrow format */}
+                <div className="w-full max-w-md mx-auto mt-8">
+                  <div className="flex justify-between border-t border-white/10 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={prevStep}
+                      className="flex items-center gap-1 border-white/20 text-white hover:bg-white/10 hover:text-white bg-transparent"
+                    >
+                      <ArrowLeft className="h-4 w-4" /> Back
+                    </Button>
+                    <Button
+                      onClick={resetFlow}
+                      variant="outline"
+                      className="border-white/20 text-white hover:bg-white/10 hover:text-white bg-transparent"
+                    >
+                      Start Over
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </>
-      )}
+            )}
+          </>
+        )}
 
         {activeTab === "entries" && <EntriesLog />}
 

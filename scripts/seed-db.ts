@@ -14,7 +14,7 @@ const CURATED_PROVIDERS = [
   { id: "11", name: "Mubi" },
   { id: "258", name: "The Criterion Channel" },
   { id: "2", name: "Apple TV" },
-  { id: "384", name: "HBO Max" },
+  { id: "1899", name: "HBO Max" },
   { id: "8", name: "Netflix" },
   { id: "9", name: "Amazon Prime Video" },
   { id: "337", name: "Disney Plus" },
@@ -24,8 +24,8 @@ const CURATED_PROVIDERS = [
 const WATCH_REGION = "US"
 
 // Filters for the "Top-Rated" bucket
-const VOTE_AVERAGE_MIN = 7.5 // Lowered slightly to get more movies
-const VOTE_COUNT_MIN = 2000 // Lowered to include more films
+const VOTE_AVERAGE_MIN = 7.2 // Lowered slightly to get more movies
+const VOTE_COUNT_MIN = 300 // Lowered to include more films
 
 // Increase limits for production seeding
 const MAX_PAGES_PER_CURATED_PROVIDER = 300 // This should give you plenty
