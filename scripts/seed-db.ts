@@ -70,7 +70,7 @@ async function seedCuratedMovies() {
     let currentPage = 1, totalPages = 1
     while (currentPage <= totalPages && currentPage <= MAX_PAGES_PER_CURATED_PROVIDER) {
       try {
-        const response = await discoverMovies({ with_watch_providers: provider.id, watch_region: WATCH_REGION, page: currentPage, "vote_average.gte": 0, "vote_count.gte": 0 })
+        const response = await discoverMovies({ with_watch_providers: provider.id, watch_region: WATCH_REGION, page: currentPage, "vote_average.gte": VOTE_AVERAGE_MIN, "vote_count.gte": VOTE_COUNT_MIN })
         totalPages = response.total_pages
         response.results.forEach((movie) => allMoviesMap.set(movie.id, movie))
         console.log(`  - Page ${currentPage}/${totalPages} fetched. Total unique movies so far: ${allMoviesMap.size}`)
