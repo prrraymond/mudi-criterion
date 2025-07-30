@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { createQueryVectorForMood, type MoodQuadrant } from "@/lib/mood-vectors";
+import { createQueryVector, type MoodQuadrant, type SpecificMood } from "@/lib/mood-vectors";
 import * as tmdbService from "@/lib/tmdb";
 
 // Don't use ! operator - let them be undefined
@@ -9,7 +9,15 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const recommendationQuerySchema = z.object({
-  mood: z.enum(["high-energy-pleasant", "high-energy-unpleasant", "low-energy-pleasant", "low-energy-unpleasant"]),
+  // Updated to accept both specific moods and legacy quadrant format
+  mood: z.enum([
+    // Specific moods (new system)
+    "excited", "happy", "energetic", "angry", "anxious", "stressed", 
+    "calm", "content", "relaxed", "sad", "tired", "bored",
+    // Legacy quadrants (backward compatibility)
+    "high-energy-pleasant", "high-energy-unpleasant", 
+    "low-energy-pleasant", "low-energy-unpleasant"
+  ]),
   limit: z.coerce.number().min(1).max(50).default(20),
   threshold: z.coerce.number().min(0.01).max(1.0).default(0.6),
   exclude: z.string().optional().nullable(),
@@ -47,10 +55,10 @@ export async function GET(request: NextRequest) {
   const { mood, limit, threshold, exclude } = validation.data;
 
   try {
-// In your route.ts, after creating the query_embedding
-    const query_embedding = createQueryVectorForMood(mood as MoodQuadrant);
+    // Updated to use the universal createQueryVector function
+    const query_embedding = createQueryVector(mood as SpecificMood | MoodQuadrant);
     
-    // ADD THIS LINE BACK - Define excludedIds!
+    // Define excludedIds
     const excludedIds = exclude ? exclude.split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
 
     // Format numbers to ensure they're all floats
@@ -58,6 +66,7 @@ export async function GET(request: NextRequest) {
 
     console.log("🔍 DEBUG - Query details:", {
       mood,
+      moodType: mood.includes('-') ? 'quadrant' : 'specific',
       query_embedding,
       embedding_string: `[${formattedEmbedding.join(",")}]`,
       threshold,
@@ -71,7 +80,7 @@ export async function GET(request: NextRequest) {
       match_count: limit + excludedIds.length
     });
 
-    // ADD THESE DEBUG LINES
+    // DEBUG LINES
     console.log("🔍 DEBUG - RPC Raw Response:", {
       data: JSON.stringify(data),
       error: JSON.stringify(error),
@@ -101,7 +110,7 @@ export async function GET(request: NextRequest) {
     if (filteredData.length === 0) {
       console.log(`No results for threshold ${threshold}. Retrying with fallback threshold 0.1...`);
       const fallbackResult = await supabase.rpc("match_movies_by_mood", {
-        query_embedding: `[${query_embedding.join(",")}]`,
+        query_embedding: `[${formattedEmbedding.join(",")}]`,
         match_threshold: 0.1, // A very low threshold to catch anything remotely similar
         match_count: limit + excludedIds.length,
       });
@@ -116,7 +125,7 @@ export async function GET(request: NextRequest) {
       
       filteredData = fallbackResult.data ? fallbackResult.data.filter((movie: any) => !excludedIds.includes(movie.id)) : [];
       
-      // MOVED: Log fallback result INSIDE the if block where fallbackResult exists
+      // Log fallback result INSIDE the if block where fallbackResult exists
       console.log("🔍 DEBUG - Fallback query result:", {
         hasData: !!fallbackResult.data,
         dataLength: fallbackResult.data?.length,
@@ -155,5 +164,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-  console.log("🔍 DEBUG - RPC Response:", { data, error, dataType: typeof data, dataContent: JSON.stringify(data) });
 }
