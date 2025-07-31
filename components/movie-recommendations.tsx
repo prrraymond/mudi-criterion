@@ -485,6 +485,8 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
       const moodKey = getMoodKey(mood)
       const apiUrl = `/api/movies/recommendations?mood=${moodKey}&limit=5&threshold=0.6`
 
+      console.log("🔧 FRONTEND DEBUG - Sending mood:", moodKey)
+
       console.log("Fetching recommendations from:", apiUrl)
       console.log("Mood details:", { mood, reason, intention, moodKey })
 
