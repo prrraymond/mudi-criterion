@@ -198,11 +198,8 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
       console.log("=== FETCHING ADDITIONAL MOVIE ===")
 
       const getMoodKey = (mood: Mood): string => {
-        if (mood.energy === "high" && mood.pleasantness === "pleasant") return "high-energy-pleasant"
-        if (mood.energy === "high" && mood.pleasantness === "unpleasant") return "high-energy-unpleasant"
-        if (mood.energy === "low" && mood.pleasantness === "pleasant") return "low-energy-pleasant"
-        if (mood.energy === "low" && mood.pleasantness === "unpleasant") return "low-energy-unpleasant"
-        return "low-energy-pleasant"
+        // Use the specific mood label instead of constructing quadrant format
+        return mood.label.toLowerCase();
       }
 
       const moodKey = getMoodKey(mood)
@@ -481,11 +478,8 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
 
       // Map your UI mood format to API format
       const getMoodKey = (mood: Mood): string => {
-        if (mood.energy === "high" && mood.pleasantness === "pleasant") return "high-energy-pleasant"
-        if (mood.energy === "high" && mood.pleasantness === "unpleasant") return "high-energy-unpleasant"
-        if (mood.energy === "low" && mood.pleasantness === "pleasant") return "low-energy-pleasant"
-        if (mood.energy === "low" && mood.pleasantness === "unpleasant") return "low-energy-unpleasant"
-        return "low-energy-pleasant" // fallback
+        // Use the specific mood label instead of constructing quadrant format
+        return mood.label.toLowerCase();
       }
 
       const moodKey = getMoodKey(mood)
