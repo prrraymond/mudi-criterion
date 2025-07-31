@@ -176,3 +176,77 @@ export function calculateMoodSimilarity(vector1: number[], vector2: number[]): n
   const magnitude = Math.sqrt(magnitude1) * Math.sqrt(magnitude2);
   return magnitude === 0 ? 0 : dotProduct / magnitude;
 }
+
+// Add this function to your existing mood-vectors.ts file:
+
+/**
+ * Determines the specific mood from a mood vector (instead of just quadrant)
+ */
+export function getSpecificMoodFromVector(vector: number[]): SpecificMood {
+  const [hep, heu, lep, leu] = vector;
+  
+  // First determine the primary quadrant
+  const maxIndex = vector.indexOf(Math.max(hep, heu, lep, leu));
+  const maxValue = vector[maxIndex];
+  
+  // Get secondary values for more nuanced classification
+  const sortedValues = [...vector].sort((a, b) => b - a);
+  const secondaryValue = sortedValues[1];
+  const ratio = secondaryValue / maxValue; // How strong is the secondary influence?
+  
+  // Classify into specific moods based on dominant quadrant and secondary influences
+  switch (maxIndex) {
+    case 0: // High Energy + Pleasant dominant
+      if (heu > 0.2) return 'energetic'; // Some intensity/activation
+      if (lep > 0.2) return 'happy';     // Some calmness mixed in
+      return 'excited';                   // Pure high-energy pleasant
+      
+    case 1: // High Energy + Unpleasant dominant  
+      if (hep > 0.15) return 'stressed'; // Some positive energy mixed in
+      if (leu > 0.2) return 'anxious';   // Some low energy (worry/fear)
+      return 'angry';                     // Pure high-energy unpleasant
+      
+    case 2: // Low Energy + Pleasant dominant
+      if (hep > 0.2) return 'content';   // Some joy/satisfaction
+      if (leu > 0.15) return 'relaxed';  // Coming from tiredness/relief
+      return 'calm';                      // Pure low-energy pleasant
+      
+    case 3: // Low Energy + Unpleasant dominant
+      if (heu > 0.2) return 'tired';     // Exhaustion/burnout
+      if (lep > 0.15) return 'sad';      // Some peace/acceptance in sadness
+      return 'bored';                     // Pure low-energy unpleasant
+      
+    default:
+      return 'content'; // Fallback to a neutral positive mood
+  }
+}
+
+/**
+ * Enhanced function to get all possible moods for a vector (for debugging)
+ */
+export function getMoodProbabilities(vector: number[]): Record<SpecificMood, number> {
+  const [hep, heu, lep, leu] = vector;
+  
+  // Calculate probabilities for each specific mood based on vector values
+  return {
+    // High Energy + Pleasant
+    excited: hep * (1 - Math.max(heu, lep, leu)),
+    happy: hep * (1 - heu) * (lep * 0.5),
+    energetic: hep * (heu * 0.3),
+    
+    // High Energy + Unpleasant  
+    angry: heu * (1 - Math.max(hep, lep, leu)),
+    anxious: heu * (leu * 0.5),
+    stressed: heu * (hep * 0.3),
+    
+    // Low Energy + Pleasant
+    calm: lep * (1 - Math.max(hep, heu, leu)),
+    content: lep * (hep * 0.5),
+    relaxed: lep * (leu * 0.3),
+    
+    // Low Energy + Unpleasant
+    sad: leu * (lep * 0.3),
+    tired: leu * (heu * 0.5), 
+    bored: leu * (1 - Math.max(hep, heu, lep))
+  };
+}

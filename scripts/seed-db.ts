@@ -1,13 +1,13 @@
 // /scripts/seed-db.ts
 // To run: npx tsx scripts/seed-db.ts
-// This script REPLACES the existing database with a curated set of high-quality films.
+// This script REPLACES the existing database with a curated set of high-quality films with SPECIFIC MOOD vectors.
 
 // IMPORTANT: This line must be the very first import to load environment variables
 import "./load-env"
 
 import { createClient } from "@supabase/supabase-js"
 import { discoverMovies, getGenres, type Movie } from "../lib/tmdb"
-import { generateMovieMoodVector, getPrimaryMoodQuadrant } from "../lib/mood-vectors"
+import { generateMovieMoodVector, getSpecificMoodFromVector } from "../lib/mood-vectors"
 
 // --- Curation & Seeding Configuration ---
 const CURATED_PROVIDERS = [
@@ -28,8 +28,8 @@ const VOTE_AVERAGE_MIN = 7.2 // Higher quality threshold
 const VOTE_COUNT_MIN = 300   // More established films
 
 // Reasonable limits for curated dataset
-const MAX_PAGES_PER_CURATED_PROVIDER = 300  // Get more quality movies per provider
-const MAX_PAGES_FOR_TOP_RATED = 300         // More top-rated films including classics
+const MAX_PAGES_PER_CURATED_PROVIDER = 300  // Reduced for faster seeding
+const MAX_PAGES_FOR_TOP_RATED = 300         // Reduced for faster seeding
 
 // --- Supabase Client Setup ---
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -51,11 +51,9 @@ function parseReleaseDate(dateString: string): string | null {
   return dateString
 }
 
-
-
 async function seedCuratedMovies() {
-  console.log("🚀 Starting CURATED movie replacement process...")
-  console.log("🎯 Focus: High-quality movies across all eras (including classics!)")
+  console.log("🚀 Starting SPECIFIC MOOD vector generation process...")
+  console.log("🎯 Focus: High-quality movies with 12 specific mood classifications")
 
   console.log("📚 Fetching genre list...")
   const genreMap = await getGenres()
@@ -223,23 +221,40 @@ async function seedCuratedMovies() {
     return console.log("❌ No movies were inserted. Stopping here.")
   }
 
-  // --- STEP 3: GENERATE NEW VECTORS ---
-  console.log("\n🧠 Generating mood vectors for curated collection...")
+  // --- STEP 3: GENERATE SPECIFIC MOOD VECTORS ---
+  console.log("\n🧠 Generating SPECIFIC MOOD vectors for curated collection...")
+  console.log("🎭 Each movie will be classified into one of 12 specific moods")
+  
+  const moodDistribution = {
+    excited: 0, happy: 0, energetic: 0,
+    angry: 0, anxious: 0, stressed: 0,
+    calm: 0, content: 0, relaxed: 0,
+    sad: 0, tired: 0, bored: 0
+  }
+  
   const vectorsToInsert = moviesToInsert.map((movie) => {
     const genreIds = JSON.parse(movie.genres).map((g: {id: number}) => g.id)
     const embedding = generateMovieMoodVector(genreIds)
-    const mood_quadrant = getPrimaryMoodQuadrant(embedding)
+    
+    // NEW: Get specific mood instead of quadrant
+    const specificMood = getSpecificMoodFromVector(embedding)
+    moodDistribution[specificMood as keyof typeof moodDistribution]++
+    
     return { 
       movie_id: movie.id, 
       embedding: `[${embedding.join(",")}]`, 
-      mood_quadrant 
+      mood_quadrant: specificMood  // Store specific mood in mood_quadrant column
     }
   })
   
-  console.log(`✅ Generated ${vectorsToInsert.length} mood vectors`)
+  console.log(`✅ Generated ${vectorsToInsert.length} specific mood vectors`)
+  console.log("\n🎭 Mood Distribution:")
+  Object.entries(moodDistribution).forEach(([mood, count]) => {
+    console.log(`  ${mood}: ${count} movies`)
+  })
   
   // Insert vectors
-  console.log("\n💾 Inserting mood vectors...")
+  console.log("\n💾 Inserting specific mood vectors...")
   for (let i = 0; i < vectorsToInsert.length; i += batchSize) {
     const batch = vectorsToInsert.slice(i, i + batchSize)
     const { error } = await supabaseAdmin
@@ -253,10 +268,10 @@ async function seedCuratedMovies() {
     }
   }
   
-  console.log("✅ Vector insertion complete")
-  console.log("\n🎉 Curated database replacement finished!")
-  console.log(`📈 Database now contains ${successfulInserts} high-quality movies from all eras`)
-  console.log("🎬 Collection includes classics, modern hits, and curated gems!")
+  console.log("✅ Specific mood vector insertion complete")
+  console.log("\n🎉 Enhanced database generation finished!")
+  console.log(`📈 Database now contains ${successfulInserts} movies with specific mood classifications`)
+  console.log("🎭 Users can now get recommendations for 12 different emotional states!")
 }
 
 // --- Run the script ---
