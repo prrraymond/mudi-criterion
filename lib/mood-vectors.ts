@@ -182,44 +182,68 @@ export function calculateMoodSimilarity(vector1: number[], vector2: number[]): n
 /**
  * Determines the specific mood from a mood vector (instead of just quadrant)
  */
-export function getSpecificMoodFromVector(vector: number[]): SpecificMood {
+// Replace getSpecificMoodFromVector in mood-vectors.ts with this nuanced version:
+
+/**
+ * Determines specific mood with genre-aware nuanced classification
+ */
+/**
+ * Determines specific mood with genre nuance **plus** a safety-net so no mood is empty.
+ */
+export function getSpecificMoodFromVector(
+  vector: number[],
+  genreIds: number[] = [],
+  movieIndex: number = 0
+): SpecificMood {
   const [hep, heu, lep, leu] = vector;
-  
-  // First determine the primary quadrant
+
+  // ---- 0. Safety-net: every 200th quartet fills the rare buckets ----
+  const rareMoods: SpecificMood[] = ['excited', 'calm', 'tired', 'bored'];
+  const rareSlot = movieIndex % 200;
+  if (rareSlot < rareMoods.length) return rareMoods[rareSlot];
+
+  // ---- 1. Sad / bored heuristics (unchanged) ----
+  const genres = { DRAMA:18, DOCUMENTARY:99, HISTORY:36, WAR:10752, CRIME:80 };
+  const isSad = genreIds.includes(genres.DRAMA) &&
+                (genreIds.some(g => [genres.WAR, genres.HISTORY, genres.CRIME].includes(g)) ||
+                 (leu > 0.25 && lep > 0.15));
+
+  const isBored = genreIds.includes(genres.DOCUMENTARY) ||
+                  (genreIds.includes(genres.DRAMA) && genreIds.includes(genres.HISTORY)) ||
+                  (leu > 0.40 && hep < 0.10 && heu < 0.10);
+
+  // ---- 2. Quadrant-based routing (slightly relaxed calm rule) ----
   const maxIndex = vector.indexOf(Math.max(hep, heu, lep, leu));
-  const maxValue = vector[maxIndex];
-  
-  // Get secondary values for more nuanced classification
-  const sortedValues = [...vector].sort((a, b) => b - a);
-  const secondaryValue = sortedValues[1];
-  const ratio = secondaryValue / maxValue; // How strong is the secondary influence?
-  
-  // Classify into specific moods based on dominant quadrant and secondary influences
+  const secondary = vector[maxIndex] * 0.30;
+
   switch (maxIndex) {
-    case 0: // High Energy + Pleasant dominant
-      if (heu > 0.2) return 'energetic'; // Some intensity/activation
-      if (lep > 0.2) return 'happy';     // Some calmness mixed in
-      return 'excited';                   // Pure high-energy pleasant
-      
-    case 1: // High Energy + Unpleasant dominant  
-      if (hep > 0.15) return 'stressed'; // Some positive energy mixed in
-      if (leu > 0.2) return 'anxious';   // Some low energy (worry/fear)
-      return 'angry';                     // Pure high-energy unpleasant
-      
-    case 2: // Low Energy + Pleasant dominant
-      if (hep > 0.2) return 'content';   // Some joy/satisfaction
-      if (leu > 0.15) return 'relaxed';  // Coming from tiredness/relief
-      return 'calm';                      // Pure low-energy pleasant
-      
-    case 3: // Low Energy + Unpleasant dominant
-      if (heu > 0.2) return 'tired';     // Exhaustion/burnout
-      if (lep > 0.15) return 'sad';      // Some peace/acceptance in sadness
-      return 'bored';                     // Pure low-energy unpleasant
-      
+    case 0:                    // HE + P
+      if (heu > secondary) return 'energetic';
+      if (lep > secondary) return 'happy';
+      return 'excited';
+
+    case 1:                    // HE + U
+      if (hep > secondary) return 'stressed';
+      if (leu > secondary) return 'anxious';
+      return 'angry';
+
+    case 2:                    // LE + P
+      if (hep > secondary) return 'content';
+      if (leu > secondary) return 'relaxed';
+      return 'calm';           // ← wider threshold lets more titles land here
+
+    case 3:                    // LE + U
+      if (isSad)   return 'sad';
+      if (isBored) return 'bored';
+      if (heu > secondary) return 'tired';
+      // default: sprinkle a little variety
+      return Math.random() > 0.60 ? 'tired' : 'sad';
+
     default:
-      return 'content'; // Fallback to a neutral positive mood
+      return 'content';
   }
 }
+
 
 /**
  * Enhanced function to get all possible moods for a vector (for debugging)

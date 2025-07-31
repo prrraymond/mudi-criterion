@@ -232,20 +232,22 @@ async function seedCuratedMovies() {
     sad: 0, tired: 0, bored: 0
   }
   
-  const vectorsToInsert = moviesToInsert.map((movie) => {
-    const genreIds = JSON.parse(movie.genres).map((g: {id: number}) => g.id)
-    const embedding = generateMovieMoodVector(genreIds)
-    
-    // NEW: Get specific mood instead of quadrant
-    const specificMood = getSpecificMoodFromVector(embedding)
-    moodDistribution[specificMood as keyof typeof moodDistribution]++
-    
-    return { 
-      movie_id: movie.id, 
-      embedding: `[${embedding.join(",")}]`, 
-      mood_quadrant: specificMood  // Store specific mood in mood_quadrant column
-    }
-  })
+  const vectorsToInsert = moviesToInsert.map((movie, index) => {
+    const genreIds  = JSON.parse(movie.genres).map((g: { id: number }) => g.id);
+    const embedding = generateMovieMoodVector(genreIds);
+
+    // ➊  Pass `index` as third arg
+    const specificMood = getSpecificMoodFromVector(embedding, genreIds, index);
+
+    moodDistribution[specificMood as keyof typeof moodDistribution]++;
+
+    return {
+      movie_id: movie.id,
+      embedding: `[${embedding.join(",")}]`,
+      mood_quadrant: specificMood,
+    };
+  });
+
   
   console.log(`✅ Generated ${vectorsToInsert.length} specific mood vectors`)
   console.log("\n🎭 Mood Distribution:")
