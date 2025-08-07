@@ -8,140 +8,155 @@ import * as tmdbService from "@/lib/tmdb";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// ✨ UPDATE: Added `intention` and `reason` to the input validation schema.
 const recommendationQuerySchema = z.object({
-  // Updated to accept both specific moods and legacy quadrant format
-  mood: z.enum([
-    // Specific moods (new system)
-    "excited", "happy", "energetic", "angry", "anxious", "stressed", 
-    "calm", "content", "relaxed", "sad", "tired", "bored",
-    // Legacy quadrants (backward compatibility)
-    "high-energy-pleasant", "high-energy-unpleasant", 
-    "low-energy-pleasant", "low-energy-unpleasant"
-  ]),
+  mood: z.string(), // Keep as string to allow any mood label
+  intention: z.enum(["sit", "shift"]).default("sit"),
+  reason: z.string().optional().nullable(),
   limit: z.coerce.number().min(1).max(50).default(20),
   threshold: z.coerce.number().min(0.01).max(1.0).default(0.6),
   exclude: z.string().optional().nullable(),
 });
 
+// ✨ SHIFT LOGIC: This maps an initial mood to a more positive target mood.
+const moodMappings: Record<SpecificMood, SpecificMood> = {
+  // Unpleasant moods are mapped to pleasant ones
+  angry: "energetic",
+  anxious: "calm",
+  stressed: "relaxed",
+  sad: "content",
+  tired: "calm",
+  bored: "excited",
+  // Pleasant moods can stay the same or be mapped to a different energy level
+  excited: "excited",
+  happy: "happy",
+  energetic: "energetic",
+  calm: "calm",
+  content: "content",
+  relaxed: "relaxed",
+};
+
+// ✨ SHIFT LOGIC: This maps an initial reason to "antidote" themes/keywords.
+// These keywords should correspond to tags you have for your movies in the database.
+const reasonToThemeMappings: Record<string, string[]> = {
+  // Reasons for Sadness
+  "Grieving a loss": ["hope", "healing", "human-connection", "life-affirming"],
+  "Disappointed with an outcome": ["redemption", "second-chance", "perseverance"],
+  "Feeling lonely or misunderstood": ["friendship", "community", "finding-your-place", "heartwarming"],
+  "Missing someone or something from the past": ["new-beginnings", "adventure", "self-discovery"],
+  "Hurting for someone else": ["empathy", "heroism", "inspirational"],
+  "A sense of emptiness or longing": ["purpose", "adventure", "meaning-of-life"],
+
+  // Reasons for Anxiety
+  "Worrying about the unknown": ["comfort", "safety", "low-stakes", "feel-good"],
+  "Facing a big decision": ["self-discovery", "inspirational", "biography"],
+  "Afraid of failing or being judged": ["underdog-story", "perseverance", "comedy"],
+  "Concerns about health or safety": ["reassurance", "feel-good", "calming"],
+  "Feeling social pressure": ["authenticity", "individuality", "true-friendship"],
+  "Stress about money or work": ["escape", "adventure", "comedy", "fantasy"],
+
+  // Reasons for Anger
+  "Feeling treated unfairly": ["justice", "empowerment", "vindication"],
+  "My boundaries were crossed": ["empowerment", "standing-up", "self-respect"],
+  "Feeling disrespected or unheard": ["finding-your-voice", "empowerment"],
+  "Feeling blocked or frustrated": ["breakthrough", "overcoming-obstacles", "sports"],
+  "Witnessing an injustice": ["heroism", "social-justice", "fighting-the-system"],
+  "Dealing with a betrayal": ["resilience", "new-beginnings", "self-worth"],
+  
+  // Default/Fallback
+  "default": ["comedy", "adventure", "feel-good"]
+};
+
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  // Create client INSIDE the handler ✅
   if (!supabaseUrl || !supabaseServiceKey) {
-    return NextResponse.json(
-      { error: "Server configuration error - missing credentials" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
-
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
   const { searchParams } = new URL(request.url);
 
   const validation = recommendationQuerySchema.safeParse({
     mood: searchParams.get("mood"),
+    intention: searchParams.get("intention"),
+    reason: searchParams.get("reason"),
     limit: searchParams.get("limit"),
     threshold: searchParams.get("threshold"),
     exclude: searchParams.get("exclude"),
   });
 
   if (!validation.success) {
-    return NextResponse.json(
-      { error: "Invalid query parameters", details: validation.error.flatten() },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Invalid query parameters", details: validation.error.flatten() }, { status: 400 });
   }
 
-  const { mood, limit, threshold, exclude } = validation.data;
+  const { mood, intention, reason, limit, threshold, exclude } = validation.data;
+  const excludedIds = exclude ? exclude.split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
+  let moviesData;
 
   try {
-    // Updated to use the universal createQueryVector function
-    const query_embedding = createQueryVector(mood as SpecificMood | MoodQuadrant);
-    
-    // Define excludedIds
-    const excludedIds = exclude ? exclude.split(",").map(id => parseInt(id.trim())).filter(id => !isNaN(id)) : [];
+    // ✨ SHIFT LOGIC: Main conditional to handle "sit" vs "shift"
+    if (intention === 'shift' && reason) {
+      console.log("🚀 SHIFT INTENTION DETECTED");
+      // 1. Determine the target mood and themes
+      const initialMood = mood as SpecificMood;
+      const targetMood = moodMappings[initialMood] || "happy";
+      const targetThemes = reasonToThemeMappings[reason] || reasonToThemeMappings["default"];
 
-    // Format numbers to ensure they're all floats
-    const formattedEmbedding = query_embedding.map(n => n.toFixed(1));
+      // 2. Create the embedding for the TARGET mood
+      const query_embedding = createQueryVector(targetMood);
 
-    console.log("🔍 DEBUG - Query details:", {
-      mood,
-      moodType: mood.includes('-') ? 'quadrant' : 'specific',
-      query_embedding,
-      embedding_string: `[${formattedEmbedding.join(",")}]`,
-      threshold,
-      excludedIds
-    });
+      console.log("🔍 DEBUG - Shift details:", { initialMood, reason, targetMood, targetThemes, query_embedding });
 
-    // Use the formatted version
-    let { data, error } = await supabase.rpc("match_movies_by_mood", {
-      query_embedding: `[${formattedEmbedding.join(",")}]`,
-      match_threshold: threshold,
-      match_count: limit + excludedIds.length
-    });
-
-    // DEBUG LINES
-    console.log("🔍 DEBUG - RPC Raw Response:", {
-      data: JSON.stringify(data),
-      error: JSON.stringify(error),
-      dataType: typeof data,
-      isArray: Array.isArray(data),
-      actualLength: data?.length
-    });
-
-    if (error) {
-      console.error("Supabase RPC error (Primary Query):", error);
-      return NextResponse.json(
-        { error: "Database query failed", details: error.message },
-        { status: 500 }
-      );
-    }
-
-    console.log("🔍 DEBUG - Primary query result:", {
-      hasData: !!data,
-      dataLength: data?.length,
-      error
-    });
-
-    let filteredData = data ? data.filter((movie: any) => !excludedIds.includes(movie.id)) : [];
-
-    // --- RESILIENT FALLBACK LOGIC ---
-    // If the primary query yields no results, try again with a much lower threshold.
-    if (filteredData.length === 0) {
-      console.log(`No results for threshold ${threshold}. Retrying with fallback threshold 0.1...`);
-      const fallbackResult = await supabase.rpc("match_movies_by_mood", {
-        query_embedding: `[${formattedEmbedding.join(",")}]`,
-        match_threshold: 0.1, // A very low threshold to catch anything remotely similar
+      // 3. Call a NEW, more advanced RPC function
+      // This function needs to be created in your Supabase backend.
+      // It should perform a search that considers both the mood vector AND the theme keywords.
+      const { data, error } = await supabase.rpc("match_movies_by_shift_intention", {
+        query_embedding: `[${query_embedding.join(",")}]`,
+        target_themes: targetThemes, // Pass themes as an array of strings
+        match_threshold: threshold,
         match_count: limit + excludedIds.length,
       });
 
-      if (fallbackResult.error) {
-        console.error("Supabase RPC error (Fallback Query):", fallbackResult.error);
-        return NextResponse.json(
-          { error: "Database fallback query failed", details: fallbackResult.error.message },
-          { status: 500 }
-        );
-      }
+      if (error) throw new Error(`Database shift query failed: ${error.message}`);
+      moviesData = data;
+
+    } else {
+      console.log("🧘 SIT INTENTION DETECTED");
+      // This is the original logic for matching the current mood
+      const query_embedding = createQueryVector(mood as SpecificMood | MoodQuadrant);
       
-      filteredData = fallbackResult.data ? fallbackResult.data.filter((movie: any) => !excludedIds.includes(movie.id)) : [];
-      
-      // Log fallback result INSIDE the if block where fallbackResult exists
-      console.log("🔍 DEBUG - Fallback query result:", {
-        hasData: !!fallbackResult.data,
-        dataLength: fallbackResult.data?.length,
-        error: fallbackResult.error
+      const { data, error } = await supabase.rpc("match_movies_by_mood", {
+        query_embedding: `[${query_embedding.join(",")}]`,
+        match_threshold: threshold,
+        match_count: limit + excludedIds.length
       });
+
+      if (error) throw new Error(`Database sit query failed: ${error.message}`);
+      moviesData = data;
     }
 
-    // If there are STILL no results, then the vectors table is likely empty or there's a fundamental issue.
+    let filteredData = moviesData ? moviesData.filter((movie: any) => !excludedIds.includes(movie.id)) : [];
+
+    // --- RESILIENT FALLBACK LOGIC --- (remains the same)
     if (filteredData.length === 0) {
-      return NextResponse.json(
-        { error: "No movies found in the database that match your request." },
-        { status: 404 }
-      );
+       console.log(`No results for threshold ${threshold}. Retrying with fallback threshold 0.1...`);
+      const fallbackEmbedding = createQueryVector(mood as SpecificMood | MoodQuadrant);
+      const fallbackResult = await supabase.rpc("match_movies_by_mood", {
+        query_embedding: `[${fallbackEmbedding.join(",")}]`,
+        match_threshold: 0.1,
+        match_count: limit + excludedIds.length,
+      });
+
+      if (fallbackResult.error) throw new Error(`Database fallback query failed: ${fallbackResult.error.message}`);
+      filteredData = fallbackResult.data ? fallbackResult.data.filter((movie: any) => !excludedIds.includes(movie.id)) : [];
+    }
+    
+    if (filteredData.length === 0) {
+      return NextResponse.json({ error: "No movies found matching your request." }, { status: 404 });
     }
 
-    // --- Fetch TMDb Details for the final list ---
+    // --- Fetch TMDb Details for the final list --- (remains the same)
     const finalData = filteredData.slice(0, limit);
     const detailedMovies = await Promise.all(
       finalData.map(async (movie: any) => {
@@ -150,7 +165,7 @@ export async function GET(request: NextRequest) {
           return { ...movie, ...details };
         } catch (e) {
           console.warn(`Could not fetch details for movie ${movie.id}`, e);
-          return movie; // Fallback to basic data from our DB if TMDb fetch fails
+          return movie;
         }
       })
     );
@@ -159,9 +174,7 @@ export async function GET(request: NextRequest) {
 
   } catch (err) {
     console.error("Unexpected error in recommendation route:", err);
-    return NextResponse.json(
-      { error: "An unexpected server error occurred" },
-      { status: 500 }
-    );
+    const errorMessage = err instanceof Error ? err.message : "An unexpected server error occurred";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

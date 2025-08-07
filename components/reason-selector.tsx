@@ -3,120 +3,121 @@
 import { Button } from "@/components/ui/button"
 import type { Mood, Reason } from "@/app/page"
 
-// Enhanced mood-to-reason mapping with unique sets for each emotion
+// 💡 Updated mood-to-reason mapping with optimized, user-centric wording
 const reasonsBySpecificMood = {
   // HIGH ENERGY + PLEASANT
   "excited": [
-    "Upcoming event or opportunity",
-    "New adventure or travel plans", 
-    "Anticipating a special occasion",
-    "Starting something new and challenging",
-    "Breakthrough or discovery",
-    "Romantic anticipation or attraction"
+    "Looking forward to an event",
+    "Planning an adventure or trip",
+    "A promising new start",
+    "A creative breakthrough or discovery",
+    "A new connection or romance",
+    "Anticipating a personal win"
   ],
-  
+
   "happy": [
-    "Recent accomplishment or success",
-    "Positive social interaction",
+    "A recent success or achievement",
+    "Connecting with people I care about",
     "Receiving good news",
-    "Feeling appreciated or loved",
-    "Beautiful weather or environment",
-    "Spontaneous joy or gratitude"
+    "Feeling loved or appreciated",
+    "Enjoying my surroundings",
+    "A simple, joyful moment"
   ],
-  
+
   "energetic": [
-    "Good physical health and vitality",
-    "Productive morning routine",
-    "Exercise or physical activity",
-    "Caffeine or natural energy boost",
-    "Motivated by clear goals",
-    "Feeling physically strong and capable"
+    "Feeling healthy and physically well",
+    "After a great workout",
+    "Inspired and driven by my goals",
+    "Riding a wave of productivity",
+    "From a good night's sleep",
+    "Just feeling naturally full of life"
   ],
 
   // HIGH ENERGY + UNPLEASANT
   "angry": [
-    "Injustice or unfair treatment",
-    "Boundaries being violated",
-    "Feeling disrespected or dismissed",
-    "Blocked goals or thwarted plans",
-    "Witnessing wrongdoing",
-    "Betrayal or broken trust"
+    "Feeling treated unfairly",
+    "My boundaries were crossed",
+    "Feeling disrespected or unheard",
+    "Feeling blocked or frustrated",
+    "Witnessing an injustice",
+    "Dealing with a betrayal"
   ],
-  
+
   "anxious": [
-    "Uncertainty about the future",
-    "Important upcoming decision",
-    "Fear of failure or judgment",
-    "Health or safety concerns",
-    "Social performance pressure",
-    "Financial or security worries"
+    "Worrying about the unknown",
+    "Facing a big decision",
+    "Afraid of failing or being judged",
+    "Concerns about health or safety",
+    "Feeling social pressure",
+    "Stress about money or work"
   ],
-  
+
   "stressed": [
-    "Multiple competing deadlines",
-    "Overwhelming workload",
-    "Time pressure and rushing",
-    "Juggling too many responsibilities",
-    "Difficult decision-making",
-    "Pressure to meet expectations"
+    "Too much to do, too little time",
+    "Juggling multiple responsibilities",
+    "Facing high-stakes pressure",
+    "Dealing with a difficult conflict",
+    "Feeling overwhelmed by my environment",
+    "Feeling completely burned out"
   ],
 
   // LOW ENERGY + PLEASANT
   "calm": [
-    "Meditation or mindfulness practice",
-    "Resolved conflict or problem",
-    "Peaceful natural environment",
-    "Sense of safety and security",
-    "Deep breathing or relaxation",
-    "Spiritual or philosophical reflection"
+    "A quiet moment of mindfulness",
+    "After resolving a problem",
+    "Being in a peaceful environment",
+    "Feeling safe and sound",
+    "A deep sense of inner peace",
+    "Reflecting on my values"
   ],
-  
+
   "content": [
-    "Acceptance of current circumstances",
-    "Gratitude for what you have",
-    "Feeling fulfilled in relationships",
-    "Pride in personal progress",
-    "Simple pleasures and comforts",
-    "Alignment with personal values"
+    "Accepting things as they are",
+    "Feeling grateful for what I have",
+    "Fulfilled by my relationships",
+    "Proud of my personal journey",
+    "Enjoying the simple comforts of life",
+    "Feeling aligned with who I am"
   ],
-  
+
   "relaxed": [
-    "End of a stressful period",
-    "Comfortable physical environment",
-    "Quality rest or leisure time",
-    "Massage or physical relief",
-    "Vacation or break from routine",
-    "Letting go of control or worry"
+    "Unwinding after a stressful period",
+    "In a comfortable, cozy space",
+    "Taking a well-deserved break",
+    "Physical relief from tension",
+    "On vacation or taking time off",
+    "Successfully letting go of worry"
   ],
 
   // LOW ENERGY + UNPLEASANT
   "sad": [
-    "Loss or grief",
-    "Disappointment in outcomes", 
-    "Feeling misunderstood or alone",
-    "Nostalgia or missing someone",
-    "Empathy for others' suffering",
-    "Unmet emotional needs"
+    "Grieving a loss",
+    "Disappointed with an outcome",
+    "Feeling lonely or misunderstood",
+    "Missing someone or something from the past",
+    "Hurting for someone else",
+    "A sense of emptiness or longing"
   ],
-  
+
   "tired": [
-    "Physical or mental exhaustion",
-    "Poor sleep quality or insomnia",
-    "Emotional burnout",
-    "Chronic stress effects",
-    "Overcommitment and depletion",
-    "Seasonal energy changes"
+    "Physically exhausted",
+    "Mentally or emotionally drained",
+    "From a lack of quality sleep",
+    "Feeling run-down or unwell",
+    "Worn out from a long day or week",
+    "Just a general lack of energy"
   ],
-  
+
   "bored": [
-    "Lack of mental stimulation",
-    "Repetitive routine or monotony",
-    "Underutilization of skills",
-    "Absence of meaningful challenges",
-    "Social isolation or understimulation",
-    "Lack of purpose or direction"
+    "Needing mental stimulation",
+    "Stuck in a monotonous routine",
+    "Feeling unchallenged or underused",
+    "Lacking a meaningful task or goal",
+    "Feeling socially disconnected",
+    "Feeling stuck or without direction"
   ]
 }
+
 
 interface ReasonSelectorProps {
   selectedReason: Reason | null
