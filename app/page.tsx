@@ -9,9 +9,11 @@ import IntentionSelector from "@/components/intention-selector"
 import MovieRecommendations from "@/components/movie-recommendations"
 import GlobalDashboard from "@/components/global-dashboard"
 import EntriesLog from "@/components/entries-log"
+import ProductionMap from "@/components/production-map"
 import AuthModal from "@/components/auth-modal"
+import FeedbackButton from "@/components/feedback-button"
 import { useAuth } from "@/components/auth-provider"
-import { ArrowLeft, ArrowRight, Home, BookOpen, Globe, User, LogOut } from "lucide-react"
+import { ArrowLeft, ArrowRight, Home, BookOpen, Globe, Film, User, LogOut } from 'lucide-react'
 import ProfileSetup from "@/components/profile-setup"
 
 export type Mood = {
@@ -28,7 +30,7 @@ export default function HomePage() {
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null)
   const [selectedReason, setSelectedReason] = useState<Reason | null>(null)
   const [selectedIntention, setSelectedIntention] = useState<Intention | null>(null)
-  const [activeTab, setActiveTab] = useState<"home" | "entries" | "global">("home")
+  const [activeTab, setActiveTab] = useState<"home" | "entries" | "global" | "production">("home")
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showProfileSetup, setShowProfileSetup] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -148,6 +150,15 @@ export default function HomePage() {
               >
                 <Globe className="h-3 w-3" />
                 Global
+              </button>
+              <button
+                onClick={() => setActiveTab("production")}
+                className={`flex items-center gap-2 px-4 py-2 text-xs font-medium transition-all ${
+                  activeTab === "production" ? "bg-white text-black" : "bg-transparent text-white hover:bg-white/10"
+                }`}
+              >
+                <Film className="h-3 w-3" />
+                Production Map
               </button>
             </div>
 
@@ -302,7 +313,12 @@ export default function HomePage() {
         {activeTab === "entries" && <EntriesLog />}
 
         {activeTab === "global" && <GlobalDashboard />}
+
+        {activeTab === "production" && <ProductionMap />}
       </main>
+
+      {/* Floating Feedback Button - Only show when not on production tab */}
+      {activeTab !== "production" && <FeedbackButton variant="floating" />}
 
       {/* Profile Setup Modal */}
       <ProfileSetup
