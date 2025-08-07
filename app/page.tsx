@@ -13,7 +13,7 @@ import ProductionMap from "@/components/production-map"
 import AuthModal from "@/components/auth-modal"
 import FeedbackButton from "@/components/feedback-button"
 import { useAuth } from "@/components/auth-provider"
-import { ArrowLeft, ArrowRight, Home, BookOpen, Globe, Film, User, LogOut } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Home, BookOpen, Globe, User, LogOut, Film } from 'lucide-react'
 import ProfileSetup from "@/components/profile-setup"
 
 export type Mood = {
@@ -311,13 +311,11 @@ export default function HomePage() {
         )}
 
         {activeTab === "entries" && <EntriesLog />}
-
         {activeTab === "global" && <GlobalDashboard />}
-
         {activeTab === "production" && <ProductionMap />}
       </main>
 
-      {/* Floating Feedback Button - Only show when not on production tab */}
+      {/* Floating Feedback Button - only show when not on production tab */}
       {activeTab !== "production" && <FeedbackButton variant="floating" />}
 
       {/* Profile Setup Modal */}

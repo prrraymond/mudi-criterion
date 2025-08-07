@@ -3,65 +3,27 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, X } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import FeaturebaseFeedback from "./featurebase-feedback"
 
 interface FeedbackButtonProps {
   variant?: "floating" | "inline"
 }
 
-export default function FeedbackButton({ variant = "inline" }: FeedbackButtonProps) {
-  const [showModal, setShowModal] = useState(false)
+export default function FeedbackButton({ variant = "floating" }: FeedbackButtonProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
-  if (variant === "floating") {
+  if (variant === "inline") {
     return (
       <>
         <Button
-          onClick={() => setShowModal(true)}
-          className="fixed bottom-6 right-6 z-40 bg-blue-500 hover:bg-blue-600 text-white shadow-lg rounded-full p-3"
-          size="sm"
+          onClick={() => setIsModalOpen(true)}
+          className="bg-blue-500 hover:bg-blue-600 text-white"
         >
-          <MessageSquare className="h-4 w-4" />
+          <MessageSquare className="h-4 w-4 mr-2" />
+          Production Notes
         </Button>
-        
-        {/* Modal */}
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <div 
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-              onClick={() => setShowModal(false)}
-            />
-            
-            {/* Modal */}
-            <div className="relative w-full max-w-4xl h-[90vh] mx-4 bg-gray-900 border border-white/20 rounded-lg overflow-hidden">
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-white/10">
-                <div>
-                  <h2 className="text-xl font-medium text-white">Production Notes</h2>
-                  <p className="text-sm text-gray-400">Share your vision for the future</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowModal(false)}
-                  className="text-white/60 hover:text-white hover:bg-white/10"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              {/* Content */}
-              <div className="p-4 h-[calc(100%-80px)]">
-                <FeaturebaseFeedback 
-                  organization="mudi-criterions" // Replace with your actual organization
-                  theme="dark"
-                  hideMenu={true}
-                  hideLogo={false}
-                />
-              </div>
-            </div>
-          </div>
-        )}
+        {isModalOpen && <FeedbackModal onClose={() => setIsModalOpen(false)} />}
       </>
     )
   }
@@ -69,47 +31,44 @@ export default function FeedbackButton({ variant = "inline" }: FeedbackButtonPro
   return (
     <>
       <Button
-        onClick={() => setShowModal(true)}
-        className="bg-blue-500 hover:bg-blue-600 text-white"
+        onClick={() => setIsModalOpen(true)}
+        className="fixed bottom-6 right-6 z-50 bg-blue-500 hover:bg-blue-600 text-white shadow-lg rounded-full p-4"
+        size="lg"
       >
-        <MessageSquare className="h-4 w-4 mr-2" />
-        Share Feedback
+        <MessageSquare className="h-5 w-5" />
       </Button>
-      
-      {/* Modal for inline variant */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div 
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowModal(false)}
-          />
-          <div className="relative w-full max-w-4xl h-[90vh] mx-4 bg-gray-900 border border-white/20 rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <div>
-                <h2 className="text-xl font-medium text-white">Production Notes</h2>
-                <p className="text-sm text-gray-400">Share your vision for the future</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowModal(false)}
-                className="text-white/60 hover:text-white hover:bg-white/10"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="p-4 h-[calc(100%-80px)]">
-              <FeaturebaseFeedback 
-                organization="mudi-criterions"
-                theme="dark"
-                hideMenu={true}
-                hideLogo={false}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {isModalOpen && <FeedbackModal onClose={() => setIsModalOpen(false)} />}
     </>
+  )
+}
+
+function FeedbackModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <Card className="w-full max-w-4xl max-h-[90vh] bg-gray-900 border-white/20 overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between border-b border-white/10 bg-black/50">
+          <CardTitle className="text-xl font-light text-white">
+            Production Notes
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="text-white/60 hover:text-white hover:bg-white/10"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0 overflow-auto max-h-[calc(90vh-80px)]">
+          <FeaturebaseFeedback
+            organization="your-org-name" // You need to replace this with your actual organization
+            theme="dark"
+            hideMenu={false}
+            hideLogo={false}
+          />
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
