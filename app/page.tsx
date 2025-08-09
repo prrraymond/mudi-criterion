@@ -9,6 +9,10 @@ import IntentionSelector from "@/components/intention-selector"
 import MovieRecommendations from "@/components/movie-recommendations"
 import GlobalDashboard from "@/components/global-dashboard"
 import EntriesLog from "@/components/entries-log"
+import AboutPage from "@/components/about-page"
+import CreditsPage from "@/components/credits-page"
+import TermsPage from "@/components/terms-page"
+import Footer from "@/components/footer"
 import AuthModal from "@/components/auth-modal"
 import { useAuth } from "@/components/auth-provider"
 import { ArrowLeft, ArrowRight, Home, BookOpen, Globe, User, LogOut } from 'lucide-react'
@@ -28,7 +32,7 @@ export default function HomePage() {
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null)
   const [selectedReason, setSelectedReason] = useState<Reason | null>(null)
   const [selectedIntention, setSelectedIntention] = useState<Intention | null>(null)
-  const [activeTab, setActiveTab] = useState<"home" | "entries" | "global">("home")
+  const [activeTab, setActiveTab] = useState<"home" | "entries" | "global" | "about" | "credits" | "terms">("home")
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showProfileSetup, setShowProfileSetup] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -52,7 +56,7 @@ export default function HomePage() {
   // Prevent hydration mismatch by not rendering auth-dependent content until mounted
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white">
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col">
         <nav className="border-b border-white/10 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
           <div className="w-full px-4">
             <div className="flex items-center justify-between">
@@ -68,10 +72,11 @@ export default function HomePage() {
             </div>
           </div>
         </nav>
-        <main className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center p-4">
+        <main className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center p-4 flex-1">
           <div className="h-10 w-10 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
           <p className="text-gray-400 font-light">Loading...</p>
         </main>
+        <Footer activeTab="home" setActiveTab={() => {}} />
       </div>
     )
   }
@@ -112,7 +117,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       {/* Menu Bar */}
       <nav className="border-b border-white/10 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="w-full px-4">
@@ -194,7 +199,7 @@ export default function HomePage() {
       </nav>
 
       {/* Main Content */}
-      <main className="flex min-h-[calc(100vh-73px)] flex-col items-center justify-center p-4">
+      <main className="flex-1 flex flex-col items-center justify-center p-4">
         {activeTab === "home" && (
           <>
             {step < 4 ? (
@@ -300,9 +305,14 @@ export default function HomePage() {
         )}
 
         {activeTab === "entries" && <EntriesLog />}
-
         {activeTab === "global" && <GlobalDashboard />}
+        {activeTab === "about" && <AboutPage />}
+        {activeTab === "credits" && <CreditsPage />}
+        {activeTab === "terms" && <TermsPage />}
       </main>
+
+      {/* Footer */}
+      <Footer activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Profile Setup Modal */}
       <ProfileSetup
