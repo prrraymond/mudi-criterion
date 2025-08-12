@@ -182,10 +182,13 @@ async function seedCuratedMovies() {
   console.log("✅ Existing data cleared successfully")
 
   // --- STEP 2: INSERT NEW CURATED MOVIES ---
+// --- STEP 2: INSERT NEW CURATED MOVIES ---
   const moviesToInsert = allMovies.map((movie) => ({
     id: movie.id,
     title: movie.title,
     overview: movie.overview,
+    // Add this line to include the synopsis
+    synopsis: movie.overview, 
     release_date: parseReleaseDate(movie.release_date),
     poster_path: movie.poster_path,
     genres: JSON.stringify(movie.genre_ids!.map((id) => ({ 

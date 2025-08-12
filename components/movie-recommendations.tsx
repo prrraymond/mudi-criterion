@@ -12,6 +12,7 @@ import { useAuth } from "./auth-provider"
 import { supabase } from "@/lib/supabase"
 import AuthModal from "./auth-modal"
 
+// All interface and helper function definitions remain the same...
 interface StreamingProvider {
   provider_id: number
   provider_name: string
@@ -190,30 +191,18 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
     }
   }
 
+
   const fetchAdditionalMovie = async () => {
     if (isRefreshing) return null
 
     try {
       setIsRefreshing(true)
-      console.log("=== FETCHING ADDITIONAL MOVIE ===")
-
-      const getMoodKey = (mood: Mood): string => {
-        // Use the specific mood label instead of constructing quadrant format
-        return mood.label.toLowerCase();
-      }
-
+      const getMoodKey = (m: Mood): string => m.label.toLowerCase()
       const moodKey = getMoodKey(mood)
-
-      // Collect movie IDs that should be excluded (only rejected and currently shown)
       const currentMovieIds = movies.map((m) => m.id)
       const rejectedMovieIds = Array.from(rejectedMovies)
-      // Don't exclude watched movies - they should stay visible
       const allExcludedIds = [...new Set([...currentMovieIds, ...rejectedMovieIds])]
 
-      console.log("Excluding movie IDs (current + rejected only):", allExcludedIds)
-      console.log("Watched movies (keeping visible):", Array.from(watchedMovies))
-
-      // Try multiple API calls with different parameters if needed
       const attempts = [
         { limit: 20, threshold: 0.3 },
         { limit: 50, threshold: 0.1 },
@@ -222,18 +211,16 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
 
       for (const attempt of attempts) {
         const excludeParam = allExcludedIds.length > 0 ? `&exclude=${allExcludedIds.join(",")}` : ""
-        const apiUrl = `/api/movies/recommendations?mood=${moodKey}&limit=${attempt.limit}&threshold=${attempt.threshold}${excludeParam}`
-        console.log("Trying API call:", apiUrl)
-
+        // ✨ FIX: Added `intention` and `reason` to the additional movie fetch call.
+        const apiUrl = `/api/movies/recommendations?mood=${moodKey}&intention=${intention}&reason=${encodeURIComponent(
+          reason
+        )}&limit=${attempt.limit}&threshold=${attempt.threshold}${excludeParam}`
+        
         const response = await fetch(apiUrl)
 
-        if (!response.ok) {
-          console.error("API call failed:", response.status, response.statusText)
-          continue
-        }
+        if (!response.ok) continue
 
         const recommendations = await response.json()
-        console.log(`Received ${recommendations.length} recommendations`)
 
         if (recommendations.length > 0) {
           const newMovie = recommendations[0]
@@ -249,25 +236,16 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
               : "/placeholder.svg?height=300&width=200&text=No+Image",
             watch_providers: newMovie.watch_providers,
           }
-
-          console.log("✅ Adding new movie:", transformedMovie.title)
-          setMovies((prev) => {
-            const updated = [...prev, transformedMovie]
-            console.log("Updated movies list length:", updated.length)
-            return updated
-          })
+          setMovies((prev) => [...prev, transformedMovie])
           return transformedMovie
         }
       }
-
-      console.log("❌ No new movies found after all attempts")
       return null
     } catch (err) {
       console.error("❌ Error fetching additional movie:", err)
       return null
     } finally {
       setIsRefreshing(false)
-      console.log("=== FETCH COMPLETE ===")
     }
   }
 
@@ -475,46 +453,38 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
     try {
       setLoading(true)
       setError(null)
-
-      // Map your UI mood format to API format
-      const getMoodKey = (mood: Mood): string => {
-        // Use the specific mood label instead of constructing quadrant format
-        return mood.label.toLowerCase();
-      }
-
+      const getMoodKey = (m: Mood): string => m.label.toLowerCase()
       const moodKey = getMoodKey(mood)
-      const apiUrl = `/api/movies/recommendations?mood=${moodKey}&limit=5&threshold=0.6`
+
+      // ✨ FIX: Added `intention` and `reason` parameters to the main API fetch call.
+      // Using encodeURIComponent on `reason` is important as it can contain spaces.
+      const apiUrl = `/api/movies/recommendations?mood=${moodKey}&intention=${intention}&reason=${encodeURIComponent(
+        reason
+      )}&limit=5&threshold=0.6`
 
       console.log("🔧 FRONTEND DEBUG - Sending mood:", moodKey)
-
       console.log("Fetching recommendations from:", apiUrl)
       console.log("Mood details:", { mood, reason, intention, moodKey })
-
       const response = await fetch(apiUrl)
-
       console.log("API Response status:", response.status)
       console.log("API Response headers:", Object.fromEntries(response.headers.entries()))
 
       if (!response.ok) {
         const errorText = await response.text()
         console.error("API Error Response:", errorText)
-
         let errorData
         try {
           errorData = JSON.parse(errorText)
         } catch {
           errorData = { error: errorText }
         }
-
         throw new Error(
-          `API request failed: ${response.status} ${response.statusText}. ${errorData.error || errorData.details || ""}`,
+          `API request failed: ${response.status} ${response.statusText}. ${errorData.error || errorData.details || ""}`
         )
       }
 
       const recommendations = await response.json()
       console.log("Received recommendations:", recommendations)
-
-      // Transform API response to match your Movie interface
       const transformedMovies: Movie[] = recommendations.map((movie: any) => ({
         id: movie.id,
         title: movie.title,
@@ -527,14 +497,11 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
           : "/placeholder.svg?height=300&width=200&text=No+Image",
         watch_providers: movie.watch_providers,
       }))
-
       console.log("Transformed movies:", transformedMovies)
       setMovies(transformedMovies)
     } catch (err) {
       console.error("Error fetching recommendations:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch recommendations. Please try again.")
-
-      // Fallback to a helpful error message
       setMovies([])
     } finally {
       setLoading(false)
@@ -545,6 +512,7 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
     fetchRecommendations()
   }, [mood, reason, intention])
 
+  // The rest of the return JSX remains the same...
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12">

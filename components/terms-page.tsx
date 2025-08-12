@@ -1,175 +1,209 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Shield, AlertTriangle, ExternalLink, Scale } from 'lucide-react'
+import { Button } from "@/components/ui/button"
+import { ExternalLink, Shield, AlertTriangle, Scale, Mail } from "lucide-react"
 
 export default function TermsPage() {
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-8">
+    <div className="w-full max-w-3xl mx-auto space-y-6">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-4xl tracking-tight text-white mb-4">Terms & Conditions</h1>
-        <div className="h-px w-24 bg-white/30 mx-auto mb-6"></div>
-        <p className="text-gray-300 font-light">
-          Last updated: December 2024
-        </p>
+      <div className="text-center mb-8">
+        <h1 className="text-3xl tracking-tight text-white mb-2">
+          <span className="font-medium">Terms &</span>
+          <span className="font-serif"> Conditions</span>
+        </h1>
+        <div className="h-px w-16 bg-white/30 mx-auto my-4"></div>
+        <p className="text-lg text-gray-300 font-light">Last updated: August 2024</p>
       </div>
 
-      {/* Acceptance of Terms */}
-      <Card className="bg-black/50 border-white/10">
-        <CardContent className="p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <Scale className="h-5 w-5 text-blue-400" />
-            <h2 className="text-xl font-medium text-white">Acceptance of Terms</h2>
+      {/* Acceptance */}
+      <Card className="bg-black border-white/10">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <Scale className="h-6 w-6 text-blue-500 mt-1 flex-shrink-0" />
+            <div>
+              <h2 className="text-xl font-medium text-white mb-3">Acceptance of Terms</h2>
+              <p className="text-gray-300 font-light leading-relaxed">
+                By accessing and using Mudi Criterions, you accept and agree to be bound by the terms and provision of
+                this agreement. This service is provided for educational and entertainment purposes only, with no
+                commercial intent.
+              </p>
+            </div>
           </div>
-          <p className="text-gray-300 leading-relaxed">
-            By accessing and using Mudi Criterions, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
-          </p>
         </CardContent>
       </Card>
 
       {/* Service Description */}
-      <Card className="bg-black/50 border-white/10">
-        <CardContent className="p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <Shield className="h-5 w-5 text-blue-400" />
-            <h2 className="text-xl font-medium text-white">Service Description</h2>
+      <Card className="bg-black border-white/10">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <Shield className="h-6 w-6 text-blue-500 mt-1 flex-shrink-0" />
+            <div>
+              <h2 className="text-xl font-medium text-white mb-3">Service Description</h2>
+              <p className="text-gray-300 font-light leading-relaxed mb-4">
+                Mudi Criterions is a mood-based movie recommendation platform that helps users discover films based on
+                their emotional state. We provide curated suggestions using data from The Movie Database (TMDB) and
+                streaming availability information.
+              </p>
+              <p className="text-gray-300 font-light leading-relaxed">
+                This service is provided as-is for personal, non-commercial use only. We do not claim ownership of any
+                copyrighted content and respect all intellectual property rights.
+              </p>
+            </div>
           </div>
-          <p className="text-gray-300 leading-relaxed mb-4">
-            Mudi Criterions is a non-commercial, educational platform that provides movie recommendations based on emotional states. This service is provided for personal, non-commercial use only.
-          </p>
-          <p className="text-gray-300 leading-relaxed">
-            We do not host, store, or distribute any copyrighted content. All movie information is sourced from publicly available APIs and databases.
-          </p>
         </CardContent>
       </Card>
 
       {/* Third-Party Services */}
-      <Card className="bg-black/50 border-white/10">
-        <CardContent className="p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <ExternalLink className="h-5 w-5 text-blue-400" />
-            <h2 className="text-xl font-medium text-white">Third-Party Services</h2>
+      <Card className="bg-black border-white/10">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <ExternalLink className="h-6 w-6 text-blue-500 mt-1 flex-shrink-0" />
+            <div>
+              <h2 className="text-xl font-medium text-white mb-3">Third-Party Services</h2>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium text-white mb-2">Data Sources</h3>
+                  <p className="text-gray-300 font-light leading-relaxed">
+                    We use The Movie Database (TMDB) API for movie information. By using our service, you agree to
+                    comply with TMDB's terms of service. We are not affiliated with or endorsed by TMDB.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-white mb-2">Streaming Services</h3>
+                  <p className="text-gray-300 font-light leading-relaxed">
+                    Streaming availability information is provided for convenience only. We are not affiliated with any
+                    streaming platforms. Access to content is subject to each platform's terms of service and regional
+                    availability.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-          <p className="text-gray-300 leading-relaxed mb-4">
-            Our service integrates with and references various third-party platforms and services, including but not limited to:
-          </p>
-          <ul className="text-gray-300 space-y-2 mb-4">
-            <li>• The Movie Database (TMDB)</li>
-            <li>• Streaming platforms (Netflix, Amazon Prime, Hulu, etc.)</li>
-            <li>• Criterion Collection</li>
-            <li>• Mubi</li>
-          </ul>
-          <p className="text-gray-300 leading-relaxed">
-            Your use of these third-party services is governed by their respective terms of service. We are not responsible for the content, privacy policies, or practices of any third-party services.
-          </p>
+        </CardContent>
+      </Card>
+
+      {/* Liability Limitations */}
+      <Card className="bg-black border-white/10">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <AlertTriangle className="h-6 w-6 text-blue-500 mt-1 flex-shrink-0" />
+            <div>
+              <h2 className="text-xl font-medium text-white mb-3">Limitation of Liability</h2>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium text-white mb-2">Content Recommendations</h3>
+                  <p className="text-gray-300 font-light leading-relaxed">
+                    Movie recommendations are generated algorithmically based on mood inputs. We are not responsible for
+                    any adverse emotional reactions, psychological effects, or other consequences resulting from viewing
+                    recommended content.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-white mb-2">Service Availability</h3>
+                  <p className="text-gray-300 font-light leading-relaxed">
+                    We do not guarantee uninterrupted service availability. The service may be temporarily unavailable
+                    due to maintenance, updates, or technical issues beyond our control.
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-white mb-2">External Links</h3>
+                  <p className="text-gray-300 font-light leading-relaxed">
+                    We are not responsible for the content, privacy policies, or practices of third-party websites
+                    linked from our service.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       {/* Intellectual Property */}
-      <Card className="bg-black/50 border-white/10">
-        <CardContent className="p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <Shield className="h-5 w-5 text-blue-400" />
-            <h2 className="text-xl font-medium text-white">Intellectual Property</h2>
+      <Card className="bg-black border-white/10">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <Shield className="h-6 w-6 text-blue-500 mt-1 flex-shrink-0" />
+            <div>
+              <h2 className="text-xl font-medium text-white mb-3">Intellectual Property</h2>
+              <p className="text-gray-300 font-light leading-relaxed mb-4">
+                We respect intellectual property rights and do not claim ownership of any copyrighted movie content,
+                posters, or metadata. All movie-related content is used under fair use for educational and informational
+                purposes.
+              </p>
+              <p className="text-gray-300 font-light leading-relaxed">
+                If you believe your intellectual property rights have been infringed, please contact us immediately for
+                resolution.
+              </p>
+            </div>
           </div>
-          <p className="text-gray-300 leading-relaxed mb-4">
-            All movie titles, images, descriptions, and related content are the property of their respective owners. We make no claim to ownership of any copyrighted material.
-          </p>
-          <p className="text-gray-300 leading-relaxed mb-4">
-            This service is created for educational and personal use purposes only, with no intent for commercialization or infringement of existing intellectual property rights.
-          </p>
-          <p className="text-gray-300 leading-relaxed">
-            If you are a rights holder and believe your content is being used inappropriately, please contact us for immediate resolution.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Disclaimer of Warranties */}
-      <Card className="bg-black/50 border-white/10">
-        <CardContent className="p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <AlertTriangle className="h-5 w-5 text-blue-400" />
-            <h2 className="text-xl font-medium text-white">Disclaimer of Warranties</h2>
-          </div>
-          <p className="text-gray-300 leading-relaxed mb-4">
-            The information on this service is provided on an "as is" basis. To the fullest extent permitted by law, this service:
-          </p>
-          <ul className="text-gray-300 space-y-2 mb-4">
-            <li>• Excludes all representations and warranties relating to this service and its contents</li>
-            <li>• Excludes all liability for damages arising out of or in connection with your use of this service</li>
-            <li>• Makes no guarantees about the accuracy, completeness, or timeliness of movie information</li>
-          </ul>
-        </CardContent>
-      </Card>
-
-      {/* Limitation of Liability */}
-      <Card className="bg-black/50 border-white/10">
-        <CardContent className="p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <AlertTriangle className="h-5 w-5 text-blue-400" />
-            <h2 className="text-xl font-medium text-white">Limitation of Liability</h2>
-          </div>
-          <p className="text-gray-300 leading-relaxed mb-4">
-            We shall not be liable for any adverse externalities, emotional responses, or consequences resulting from:
-          </p>
-          <ul className="text-gray-300 space-y-2 mb-4">
-            <li>• Movie recommendations provided by this service</li>
-            <li>• Content of recommended films</li>
-            <li>• Availability or unavailability of streaming services</li>
-            <li>• Technical issues or service interruptions</li>
-            <li>• Any decisions made based on recommendations from this service</li>
-          </ul>
-          <p className="text-gray-300 leading-relaxed">
-            Users are responsible for their own viewing choices and any consequences thereof.
-          </p>
         </CardContent>
       </Card>
 
       {/* Privacy */}
-      <Card className="bg-black/50 border-white/10">
-        <CardContent className="p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <Shield className="h-5 w-5 text-blue-400" />
-            <h2 className="text-xl font-medium text-white">Privacy</h2>
+      <Card className="bg-black border-white/10">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <Shield className="h-6 w-6 text-blue-500 mt-1 flex-shrink-0" />
+            <div>
+              <h2 className="text-xl font-medium text-white mb-3">Privacy & Data</h2>
+              <p className="text-gray-300 font-light leading-relaxed mb-4">
+                We collect minimal personal information necessary to provide the service. Mood entries and movie
+                interactions are stored securely and used only to improve recommendations and track usage patterns.
+              </p>
+              <p className="text-gray-300 font-light leading-relaxed">
+                We do not sell, share, or distribute personal data to third parties for commercial purposes.
+              </p>
+            </div>
           </div>
-          <p className="text-gray-300 leading-relaxed">
-            We respect your privacy. Any personal information collected is used solely to provide and improve our service. We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except as described in our privacy practices.
-          </p>
         </CardContent>
       </Card>
 
       {/* Changes to Terms */}
-      <Card className="bg-black/50 border-white/10">
-        <CardContent className="p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <Scale className="h-5 w-5 text-blue-400" />
-            <h2 className="text-xl font-medium text-white">Changes to Terms</h2>
+      <Card className="bg-black border-white/10">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <AlertTriangle className="h-6 w-6 text-blue-500 mt-1 flex-shrink-0" />
+            <div>
+              <h2 className="text-xl font-medium text-white mb-3">Changes to Terms</h2>
+              <p className="text-gray-300 font-light leading-relaxed">
+                We reserve the right to modify these terms at any time. Changes will be effective immediately upon
+                posting. Continued use of the service constitutes acceptance of modified terms.
+              </p>
+            </div>
           </div>
-          <p className="text-gray-300 leading-relaxed">
-            We reserve the right to modify these terms at any time. Changes will be effective immediately upon posting. Your continued use of the service after any changes constitutes acceptance of the new terms.
-          </p>
         </CardContent>
       </Card>
 
       {/* Contact */}
-      <Card className="bg-black/50 border-white/10">
-        <CardContent className="p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <ExternalLink className="h-5 w-5 text-blue-400" />
-            <h2 className="text-xl font-medium text-white">Contact</h2>
+      <Card className="bg-black border-white/10">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <Mail className="h-6 w-6 text-blue-500 mt-1 flex-shrink-0" />
+            <div className="flex-1">
+              <h2 className="text-xl font-medium text-white mb-3">Contact Information</h2>
+              <p className="text-gray-300 font-light leading-relaxed mb-4">
+                For questions about these terms, intellectual property concerns, or general inquiries, please contact
+                us:
+              </p>
+              <Button
+                asChild
+                variant="outline"
+                className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/70 bg-transparent"
+              >
+                <a
+                  href="https://www.linkedin.com/in/paulrenaud-raymond"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2"
+                >
+                  Contact via LinkedIn
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
+            </div>
           </div>
-          <p className="text-gray-300 leading-relaxed">
-            If you have any questions about these Terms & Conditions, please contact us at{' '}
-            <a 
-              href="https://www.linkedin.com/in/paulrenaud-raymond" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-400 hover:text-blue-300 underline"
-            >
-              LinkedIn
-            </a>.
-          </p>
         </CardContent>
       </Card>
     </div>
