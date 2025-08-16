@@ -4,9 +4,8 @@ import type React from "react"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { X, LogIn, Mail, ArrowLeft } from "lucide-react"
+import { X, ArrowLeft } from "lucide-react"
 import { useAuth } from "./auth-provider"
 
 interface AuthModalProps {
@@ -15,25 +14,27 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [mode, setMode] = useState<"main" | "email-signin" | "email-signup" | "reset">("main")
+  const [view, setView] = useState<"main" | "signin" | "signup" | "reset">("main")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [message, setMessage] = useState("")
+  const [success, setSuccess] = useState("")
 
   const { signIn, signInWithEmail, signUpWithEmail, resetPassword } = useAuth()
-
-  if (!isOpen) return null
 
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true)
       setError("")
       await signIn()
-      onClose()
-    } catch (err: any) {
-      setError(err.message || "Failed to sign in with Google")
+    } catch (error: any) {
+      console.error("Google sign in error:", error)
+      if (error?.message?.includes("Invalid API key") || error?.message?.includes("API key")) {
+        setError("Authentication service temporarily unavailable. Please try again later.")
+      } else {
+        setError("Failed to sign in with Google. Please try again.")
+      }
     } finally {
       setLoading(false)
     }
@@ -41,239 +42,324 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError("")
-
-    const { error } = await signInWithEmail(email, password)
-
-    if (error) {
-      setError(error.message)
-    } else {
-      onClose()
+    if (!email || !password) {
+      setError("Please fill in all fields")
+      return
     }
-    setLoading(false)
+
+    try {
+      setLoading(true)
+      setError("")
+      const { error } = await signInWithEmail(email, password)
+      if (error) {
+        if (error.message?.includes("Invalid API key") || error.message?.includes("API key")) {
+          setError("Authentication service temporarily unavailable. Please try again later.")
+        } else if (error.message?.includes("Invalid login credentials")) {
+          setError("Invalid email or password")
+        } else {
+          setError(error.message || "Failed to sign in")
+        }
+      } else {
+        onClose()
+      }
+    } catch (error: any) {
+      console.error("Email sign in error:", error)
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError("")
-
-    const { error } = await signUpWithEmail(email, password)
-
-    if (error) {
-      setError(error.message)
-    } else {
-      setMessage("Check your email for the confirmation link!")
+    if (!email || !password) {
+      setError("Please fill in all fields")
+      return
     }
-    setLoading(false)
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters")
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError("")
+      const { error } = await signUpWithEmail(email, password)
+      if (error) {
+        if (error.message?.includes("Invalid API key") || error.message?.includes("API key")) {
+          setError("Authentication service temporarily unavailable. Please try again later.")
+        } else if (error.message?.includes("User already registered")) {
+          setError("An account with this email already exists. Try signing in instead.")
+        } else {
+          setError(error.message || "Failed to create account")
+        }
+      } else {
+        setSuccess("Check your email for a confirmation link!")
+        setEmail("")
+        setPassword("")
+      }
+    } catch (error: any) {
+      console.error("Email sign up error:", error)
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    setError("")
-
-    const { error } = await resetPassword(email)
-
-    if (error) {
-      setError(error.message)
-    } else {
-      setMessage("Password reset email sent!")
+    if (!email) {
+      setError("Please enter your email address")
+      return
     }
-    setLoading(false)
+
+    try {
+      setLoading(true)
+      setError("")
+      const { error } = await resetPassword(email)
+      if (error) {
+        if (error.message?.includes("Invalid API key") || error.message?.includes("API key")) {
+          setError("Authentication service temporarily unavailable. Please try again later.")
+        } else {
+          setError(error.message || "Failed to send reset email")
+        }
+      } else {
+        setSuccess("Password reset email sent! Check your inbox.")
+        setEmail("")
+      }
+    } catch (error: any) {
+      console.error("Password reset error:", error)
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const resetForm = () => {
     setEmail("")
     setPassword("")
     setError("")
-    setMessage("")
+    setSuccess("")
     setLoading(false)
   }
 
-  const goBack = () => {
+  const handleViewChange = (newView: typeof view) => {
     resetForm()
-    setMode("main")
+    setView(newView)
   }
 
+  const handleClose = () => {
+    resetForm()
+    setView("main")
+    onClose()
+  }
+
+  if (!isOpen) return null
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-md bg-black border border-white/20">
-        <CardContent className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2">
-              {mode !== "main" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={goBack}
-                  className="text-white/60 hover:text-white hover:bg-white/10 p-1"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              )}
-              <h2 className="text-xl font-serif text-white">
-                {mode === "main" && "Sign In"}
-                {mode === "email-signin" && "Sign In"}
-                {mode === "email-signup" && "Sign Up"}
-                {mode === "reset" && "Reset Password"}
-              </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Background with cinematic image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('/lost-in-translation.png')",
+        }}
+      >
+        <div className="absolute inset-0 bg-black/60" />
+      </div>
+
+      {/* Modal Content */}
+      <div className="relative w-full max-w-md mx-4">
+        {view === "main" ? (
+          // Main Welcome Screen (Mubi Style)
+          <div className="text-white">
+            {/* Brand Dots */}
+            <div className="flex gap-1 mb-8">
+              <div className="w-2 h-2 bg-white rounded-full" />
+              <div className="w-2 h-2 bg-white rounded-full" />
+              <div className="w-2 h-2 bg-white rounded-full" />
+              <div className="w-2 h-2 bg-white rounded-full" />
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="text-white/60 hover:text-white hover:bg-white/10"
+
+            {/* Close Button */}
+            <button
+              onClick={handleClose}
+              className="absolute top-0 right-0 p-2 text-white/70 hover:text-white transition-colors"
             >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+              <X className="w-6 h-6" />
+            </button>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/40 rounded text-red-300 text-sm">{error}</div>
-          )}
-
-          {message && (
-            <div className="mb-4 p-3 bg-green-500/20 border border-green-500/40 rounded text-green-300 text-sm">
-              {message}
-            </div>
-          )}
-
-          {mode === "main" && (
-            <div className="space-y-4">
-              <p className="text-gray-400 text-sm font-light">
-                Sign in to save your movie discoveries and track your emotional cinema journey.
-              </p>
-
-              <Button
-                onClick={handleGoogleSignIn}
-                disabled={loading}
-                className="w-full bg-white text-black hover:bg-white/90 flex items-center gap-2"
-              >
-                <LogIn className="h-4 w-4" />
-                {loading ? "Signing in..." : "Continue with Google"}
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-white/20"></div>
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-black px-2 text-gray-400">or</span>
-                </div>
+            {/* Welcome Content */}
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-4xl font-light tracking-wide mb-4">
+                  WELCOME TO
+                  <br />
+                  EMOTIONAL CINEMA
+                </h1>
+                <p className="text-lg font-light text-white/80 mb-2">FREE TO USE</p>
+                <p className="text-sm text-white/60 leading-relaxed">
+                  Discover movies that match your mood.
+                  <br />
+                  No subscription required.
+                </p>
               </div>
 
-              <Button
-                onClick={() => setMode("email-signin")}
-                variant="outline"
-                className="w-full border-white/20 text-white hover:bg-white/10 flex items-center gap-2"
-              >
-                <Mail className="h-4 w-4" />
-                Sign in with Email
-              </Button>
+              {/* Action Buttons */}
+              <div className="space-y-4">
+                <Button
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                  className="w-full h-14 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-full transition-all duration-200"
+                >
+                  {loading ? "SIGNING IN..." : "SIGN IN WITH GOOGLE"}
+                </Button>
 
-              <p className="text-xs text-gray-500 text-center">
-                Don't have an account?{" "}
-                <button onClick={() => setMode("email-signup")} className="text-white hover:underline">
-                  Sign up
-                </button>
-              </p>
+                <Button
+                  onClick={() => handleViewChange("signup")}
+                  variant="outline"
+                  className="w-full h-14 bg-white/10 hover:bg-white/20 text-white border-white/20 font-medium rounded-full backdrop-blur-sm transition-all duration-200"
+                >
+                  CREATE ACCOUNT
+                </Button>
+
+                <Button
+                  onClick={() => handleViewChange("signin")}
+                  variant="ghost"
+                  className="w-full h-14 text-white/80 hover:text-white hover:bg-white/10 font-medium rounded-full transition-all duration-200"
+                >
+                  SIGN IN WITH EMAIL
+                </Button>
+              </div>
             </div>
-          )}
+          </div>
+        ) : (
+          // Form Views
+          <div className="bg-black/80 backdrop-blur-md rounded-2xl p-8 text-white">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleViewChange("main")}
+                  className="p-1 text-white/70 hover:text-white transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <h2 className="text-xl font-medium">
+                  {view === "signin" && "Sign In"}
+                  {view === "signup" && "Sign Up"}
+                  {view === "reset" && "Reset Password"}
+                </h2>
+              </div>
+              <button onClick={handleClose} className="p-1 text-white/70 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-          {mode === "email-signin" && (
-            <form onSubmit={handleEmailSignIn} className="space-y-4">
-              <div>
+            {/* Error/Success Messages */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-900/50 border border-red-500/50 rounded-lg text-red-200 text-sm">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="mb-4 p-3 bg-green-900/50 border border-green-500/50 rounded-lg text-green-200 text-sm">
+                {success}
+              </div>
+            )}
+
+            {/* Forms */}
+            {view === "signin" && (
+              <form onSubmit={handleEmailSignIn} className="space-y-4">
                 <Input
                   type="email"
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-lg focus:border-blue-500 focus:ring-blue-500/20"
                   required
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                 />
-              </div>
-              <div>
                 <Input
                   type="password"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-lg focus:border-blue-500 focus:ring-blue-500/20"
                   required
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                 />
-              </div>
-              <Button type="submit" disabled={loading} className="w-full bg-white text-black hover:bg-white/90">
-                {loading ? "Signing in..." : "Sign In"}
-              </Button>
-              <p className="text-xs text-center">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  {loading ? "SIGNING IN..." : "SIGN IN"}
+                </Button>
                 <button
                   type="button"
-                  onClick={() => setMode("reset")}
-                  className="text-gray-400 hover:text-white hover:underline"
+                  onClick={() => handleViewChange("reset")}
+                  className="w-full text-sm text-white/60 hover:text-white/80 transition-colors"
                 >
-                  Forgot password?
+                  Forgot your password?
                 </button>
-              </p>
-            </form>
-          )}
+              </form>
+            )}
 
-          {mode === "email-signup" && (
-            <form onSubmit={handleEmailSignUp} className="space-y-4">
-              <div>
+            {view === "signup" && (
+              <form onSubmit={handleEmailSignUp} className="space-y-4">
                 <Input
                   type="email"
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-lg focus:border-blue-500 focus:ring-blue-500/20"
                   required
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                 />
-              </div>
-              <div>
                 <Input
                   type="password"
-                  placeholder="Password (min 6 characters)"
+                  placeholder="Password (min. 6 characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-lg focus:border-blue-500 focus:ring-blue-500/20"
                   required
                   minLength={6}
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                 />
-              </div>
-              <Button type="submit" disabled={loading} className="w-full bg-white text-black hover:bg-white/90">
-                {loading ? "Creating account..." : "Sign Up"}
-              </Button>
-            </form>
-          )}
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  {loading ? "CREATING ACCOUNT..." : "SIGN UP"}
+                </Button>
+                <p className="text-xs text-white/50 text-center leading-relaxed">
+                  By signing up, you agree to our terms and privacy policy.
+                </p>
+              </form>
+            )}
 
-          {mode === "reset" && (
-            <form onSubmit={handlePasswordReset} className="space-y-4">
-              <p className="text-gray-400 text-sm">
-                Enter your email address and we'll send you a link to reset your password.
-              </p>
-              <div>
+            {view === "reset" && (
+              <form onSubmit={handlePasswordReset} className="space-y-4">
                 <Input
                   type="email"
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  className="h-12 bg-white/10 border-white/20 text-white placeholder:text-white/50 rounded-lg focus:border-blue-500 focus:ring-blue-500/20"
                   required
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                 />
-              </div>
-              <Button type="submit" disabled={loading} className="w-full bg-white text-black hover:bg-white/90">
-                {loading ? "Sending..." : "Send Reset Link"}
-              </Button>
-            </form>
-          )}
-
-          <p className="text-xs text-gray-500 text-center mt-4">
-            By signing in, you agree to our terms and privacy policy.
-          </p>
-        </CardContent>
-      </Card>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  {loading ? "SENDING..." : "SEND RESET EMAIL"}
+                </Button>
+                <p className="text-xs text-white/60 text-center">We'll send you a link to reset your password.</p>
+              </form>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

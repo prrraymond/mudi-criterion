@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Heart, Clock, Play, Pause, MapPin } from "lucide-react"
+import { Clock, Play, Pause, MapPin } from "lucide-react"
 import Image from "next/image"
 
 interface MovieFeel {
@@ -29,7 +28,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "Blade Runner 2049",
       year: "2017",
-      poster: "/placeholder.svg?height=160&width=107&text=BR2049",
+      poster: "/placeholder.svg?height=90&width=60&text=BR2049",
       rating: 8.0,
     },
     reason: "The visuals are poetry in motion, making me question what it means to be human.",
@@ -43,7 +42,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "La La Land",
       year: "2016",
-      poster: "/placeholder.svg?height=160&width=107&text=LaLaLand",
+      poster: "/placeholder.svg?height=90&width=60&text=LaLaLand",
       rating: 8.0,
     },
     reason: "Every frame is a love letter to dreams and the magic of cinema.",
@@ -71,7 +70,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "Mad Max: Fury Road",
       year: "2015",
-      poster: "/placeholder.svg?height=160&width=107&text=MadMax",
+      poster: "/placeholder.svg?height=90&width=60&text=MadMax",
       rating: 8.1,
     },
     reason: "Pure adrenaline. This is how you make action cinema that matters.",
@@ -85,7 +84,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "Moonlight",
       year: "2016",
-      poster: "/placeholder.svg?height=160&width=107&text=Moonlight",
+      poster: "/placeholder.svg?height=90&width=60&text=Moonlight",
       rating: 7.4,
     },
     reason: "A masterpiece of vulnerability. Every moment feels like a gentle revelation.",
@@ -99,7 +98,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "Spirited Away",
       year: "2001",
-      poster: "/placeholder.svg?height=160&width=107&text=Spirited",
+      poster: "/placeholder.svg?height=90&width=60&text=Spirited",
       rating: 9.3,
     },
     reason: "Miyazaki creates worlds that feel more real than reality itself.",
@@ -113,7 +112,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "Her",
       year: "2013",
-      poster: "/placeholder.svg?height=160&width=107&text=Her",
+      poster: "/placeholder.svg?height=90&width=60&text=Her",
       rating: 8.0,
     },
     reason: "Love in the digital age. Joaquin Phoenix breaks my heart in the best way.",
@@ -127,7 +126,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "Whiplash",
       year: "2014",
-      poster: "/placeholder.svg?height=160&width=107&text=Whiplash",
+      poster: "/placeholder.svg?height=90&width=60&text=Whiplash",
       rating: 8.5,
     },
     reason: "The pursuit of perfection has never been more terrifying or beautiful.",
@@ -141,7 +140,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "My Neighbor Totoro",
       year: "1988",
-      poster: "/placeholder.svg?height=160&width=107&text=Totoro",
+      poster: "/placeholder.svg?height=90&width=60&text=Totoro",
       rating: 8.2,
     },
     reason: "Pure childhood wonder. This film is a warm hug for the soul.",
@@ -155,7 +154,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "Parasite",
       year: "2019",
-      poster: "/placeholder.svg?height=160&width=107&text=Parasite",
+      poster: "/placeholder.svg?height=90&width=60&text=Parasite",
       rating: 8.5,
     },
     reason: "Bong Joon-ho crafted a masterpiece that will haunt me for days.",
@@ -169,7 +168,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "Cinema Paradiso",
       year: "1988",
-      poster: "/placeholder.svg?height=160&width=107&text=Cinema",
+      poster: "/placeholder.svg?height=90&width=60&text=Cinema",
       rating: 8.5,
     },
     reason: "A love letter to cinema itself. Tornatore captures the magic of movies perfectly.",
@@ -183,7 +182,7 @@ const movieFeels: MovieFeel[] = [
     movie: {
       title: "Burning",
       year: "2018",
-      poster: "/placeholder.svg?height=160&width=107&text=Burning",
+      poster: "/placeholder.svg?height=90&width=60&text=Burning",
       rating: 7.5,
     },
     reason: "Lee Chang-dong builds tension like no other. The ambiguity is haunting.",
@@ -227,13 +226,13 @@ export default function GlobalDashboard() {
   const duplicatedFeels = [...movieFeels, ...movieFeels]
 
   return (
-    <div className="w-full max-w-2xl mx-auto h-screen flex flex-col">
-      {/* Compact Header */}
-      <div className="text-center py-8 border-b border-amber-900/20">
-        <h1 className="text-3xl font-serif tracking-wider text-white mb-2">MOVIE FEELS</h1>
-        <div className="flex justify-center items-center gap-4 text-amber-200/80 text-sm">
+    <div className="w-full max-w-2xl mx-auto h-screen flex flex-col bg-black">
+      {/* Mubi-style Header */}
+      <div className="text-center py-6 border-b border-white/10">
+        <h1 className="text-2xl font-light tracking-[0.2em] text-white mb-3 uppercase">MOVIE FEELS</h1>
+        <div className="flex justify-center items-center gap-6 text-white/60 text-sm font-light">
           <div className="flex items-center gap-2">
-            <Heart className="h-4 w-4 text-red-400" />
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             <span>Live from around the world</span>
           </div>
           <div className="flex items-center gap-2">
@@ -243,89 +242,106 @@ export default function GlobalDashboard() {
         </div>
       </div>
 
-      {/* Play/Pause Control */}
-      <div className="flex justify-center py-4">
+      {/* Minimal Play/Pause Control */}
+      <div className="flex justify-center py-3">
         <button
           onClick={() => setIsPlaying(!isPlaying)}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 rounded-full text-amber-200 text-sm transition-colors"
+          className="flex items-center gap-2 px-3 py-1 text-white/60 hover:text-white/80 text-xs font-light transition-colors uppercase tracking-wider"
         >
-          {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          {isPlaying ? "Pause Feed" : "Play Feed"}
+          {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+          {isPlaying ? "Pause" : "Play"}
         </button>
       </div>
 
-      {/* Auto-scrolling Feed */}
+      {/* Mubi-style Auto-scrolling Feed */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-hidden relative"
         style={{
-          maskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 10%, black 90%, transparent 100%)",
+          maskImage: "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 8%, black 92%, transparent 100%)",
         }}
       >
-        <div className="space-y-4 px-6 py-8">
+        <div className="space-y-0 px-4 py-6">
           {duplicatedFeels.map((feel, index) => (
-            <Card
+            <div
               key={`${feel.id}-${index}`}
-              className="bg-gradient-to-br from-gray-900/80 via-black/90 to-gray-900/80 border border-amber-900/20 backdrop-blur-sm hover:border-amber-600/40 transition-all duration-300"
+              className="group border-b border-white/5 py-6 hover:bg-white/[0.02] transition-all duration-500 cursor-pointer"
             >
-              <CardContent className="p-4">
-                <div className="flex gap-4">
-                  {/* Left: Movie Thumbnail */}
-                  <div className="flex-shrink-0">
+              <div className="flex gap-4 items-start">
+                {/* Left: Compact Movie Poster */}
+                <div className="flex-shrink-0">
+                  <div className="relative overflow-hidden rounded-sm bg-gray-800/50">
                     <Image
                       src={feel.movie.poster || "/placeholder.svg"}
                       alt={feel.movie.title}
-                      width={107}
-                      height={160}
-                      className="rounded-md object-cover"
+                      width={60}
+                      height={90}
+                      className="object-cover transition-transform duration-700 group-hover:scale-105"
                       onError={(e) => {
-                        e.currentTarget.src = "/placeholder.svg?height=160&width=107&text=Movie"
+                        const target = e.target as HTMLImageElement
+                        target.style.display = "none"
+                        const parent = target.parentElement
+                        if (parent) {
+                          parent.innerHTML = `
+                            <div class="w-[60px] h-[90px] bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center rounded-sm">
+                              <div class="text-white/40 text-xs font-light text-center px-2 leading-tight">
+                                ${feel.movie.title}
+                              </div>
+                            </div>
+                          `
+                        }
                       }}
+                      unoptimized
                     />
                   </div>
+                </div>
 
-                  {/* Middle: Movie Details */}
-                  <div className="flex-1 min-w-0">
-                    {/* Movie Title and Year */}
-                    <div className="mb-3">
-                      <h3 className="font-bold text-white text-xl leading-tight mb-1">{feel.movie.title}</h3>
-                      <p className="text-base text-gray-400">{feel.movie.year}</p>
-                    </div>
-
-                    {/* Movie Description/Reason */}
-                    <p className="text-sm text-gray-300 font-light leading-relaxed italic">"{feel.reason}"</p>
+                {/* Center: Movie Info and Quote */}
+                <div className="flex-1 min-w-0 space-y-2">
+                  {/* Movie Title and Year */}
+                  <div>
+                    <h3 className="font-light text-white text-lg leading-tight tracking-wide">{feel.movie.title}</h3>
+                    <p className="text-white/40 text-sm font-light">{feel.movie.year}</p>
                   </div>
 
-                  {/* Right: User Emotion Section */}
-                  <div className="flex-shrink-0 flex flex-col items-end min-w-0 w-64">
-                    {/* Location and Timestamp */}
-                    <div className="flex items-center gap-2 text-sm mb-4">
-                      <MapPin className="h-4 w-4 text-amber-400" />
-                      <span className="text-amber-200 font-medium">{feel.location}</span>
-                      <span className="text-gray-500">•</span>
-                      <span className="text-gray-500">{feel.timeAgo}</span>
-                    </div>
+                  {/* Elegant Quote */}
+                  <blockquote className="text-white/70 text-sm font-light leading-relaxed italic border-l-2 border-white/10 pl-3">
+                    "{feel.reason}"
+                  </blockquote>
+                </div>
 
-                    {/* Emotion Badge */}
-                    <div>
-                      <span
-                        className={`inline-block px-4 py-2 rounded-full text-sm font-medium bg-gradient-to-r ${feel.color} text-white shadow-lg`}
-                      >
-                        {feel.emotion}
-                      </span>
+                {/* Right: Location, Time & Emotion */}
+                <div className="flex flex-col items-end text-right space-y-2 min-w-0">
+                  {/* Location and Time */}
+                  <div className="text-xs text-white/40 font-light space-y-1">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      <span>{feel.location}</span>
                     </div>
+                    <div className="text-white/30">{feel.timeAgo}</div>
+                  </div>
+
+                  {/* Emotion Badge - Mubi Style */}
+                  <div className="mt-2">
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-xs font-light bg-gradient-to-r ${feel.color} text-white/90 shadow-sm`}
+                    >
+                      {feel.emotion}
+                    </span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="text-center py-4 border-t border-amber-900/20">
-        <p className="text-gray-500 text-xs font-light">Anonymous feelings • Real movies • Authentic moments</p>
+      {/* Minimal Footer */}
+      <div className="text-center py-3 border-t border-white/5">
+        <p className="text-white/30 text-xs font-light tracking-wide">
+          Anonymous feelings • Real cinema • Authentic moments
+        </p>
       </div>
     </div>
   )

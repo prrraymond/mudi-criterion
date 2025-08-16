@@ -4,13 +4,11 @@ import { z } from "zod";
 import { createQueryVector, type MoodQuadrant, type SpecificMood } from "@/lib/mood-vectors";
 import * as tmdbService from "@/lib/tmdb";
 
-// Don't use ! operator - let them be undefined
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// ✨ UPDATE: Added `intention` and `reason` to the input validation schema.
 const recommendationQuerySchema = z.object({
-  mood: z.string(), // Keep as string to allow any mood label
+  mood: z.string(),
   intention: z.enum(["sit", "shift"]).default("sit"),
   reason: z.string().optional().nullable(),
   limit: z.coerce.number().min(1).max(50).default(20),
@@ -18,16 +16,13 @@ const recommendationQuerySchema = z.object({
   exclude: z.string().optional().nullable(),
 });
 
-// ✨ SHIFT LOGIC: This maps an initial mood to a more positive target mood.
 const moodMappings: Record<SpecificMood, SpecificMood> = {
-  // Unpleasant moods are mapped to pleasant ones
   angry: "energetic",
   anxious: "calm",
   stressed: "relaxed",
   sad: "content",
   tired: "calm",
   bored: "excited",
-  // Pleasant moods can stay the same or be mapped to a different energy level
   excited: "excited",
   happy: "happy",
   energetic: "energetic",
@@ -36,8 +31,7 @@ const moodMappings: Record<SpecificMood, SpecificMood> = {
   relaxed: "relaxed",
 };
 
-// ✨ SHIFT LOGIC: This maps an initial reason to "antidote" themes/keywords.
-// These keywords should correspond to tags you have for your movies in the database.
+// ✨ UPDATE: The mapping object is now complete with all unpleasant moods.
 const reasonToThemeMappings: Record<string, string[]> = {
   // Reasons for Sadness
   "Grieving a loss": ["hope", "healing", "human-connection", "life-affirming"],
@@ -62,6 +56,30 @@ const reasonToThemeMappings: Record<string, string[]> = {
   "Feeling blocked or frustrated": ["breakthrough", "overcoming-obstacles", "sports"],
   "Witnessing an injustice": ["heroism", "social-justice", "fighting-the-system"],
   "Dealing with a betrayal": ["resilience", "new-beginnings", "self-worth"],
+  
+  // Reasons for Stressed
+  "Too much to do, too little time": ["simple-story", "relaxation", "comedy", "escapism"],
+  "Juggling multiple responsibilities": ["low-stakes-plot", "comedy", "feel-good"],
+  "Facing high-stakes pressure": ["calming", "soothing-visuals", "nature", "ambient"],
+  "Dealing with a difficult conflict": ["resolution", "human-connection", "empathy"],
+  "Feeling overwhelmed by my environment": ["peaceful", "calming", "nature", "minimalist"],
+  "Feeling completely burned out": ["restorative", "gentle-humor", "inspirational", "hope"],
+
+  // Reasons for Tired
+  "Physically exhausted": ["engaging-story", "low-cognitive-load", "absorbing-world"],
+  "Mentally or emotionally drained": ["soothing-visuals", "ambient", "nature", "instrumental-score"],
+  "From a lack of quality sleep": ["calming", "relaxing", "gentle-story"],
+  "Feeling run-down or unwell": ["comfort-watch", "heartwarming", "feel-good"],
+  "Worn out from a long day or week": ["comedy", "lighthearted", "entertaining"],
+  "Just a general lack of energy": ["passive-viewing", "visually-beautiful", "calm"],
+
+  // Reasons for Bored
+  "Needing mental stimulation": ["complex-plot", "mystery", "mind-bending", "sci-fi"],
+  "Stuck in a monotonous routine": ["adventure", "new-cultures", "travel", "spontaneous"],
+  "Feeling unchallenged or underused": ["intellectual", "documentary", "biography", "mastery"],
+  "Lacking a meaningful task or goal": ["purpose", "inspirational", "social-impact"],
+  "Feeling socially disconnected": ["ensemble-cast", "found-family", "deep-conversation"],
+  "Feeling stuck or without direction": ["road-trip", "self-discovery", "new-perspectives"],
   
   // Default/Fallback
   "default": ["comedy", "adventure", "feel-good"]
@@ -95,25 +113,18 @@ export async function GET(request: NextRequest) {
   let moviesData;
 
   try {
-    // ✨ SHIFT LOGIC: Main conditional to handle "sit" vs "shift"
     if (intention === 'shift' && reason) {
       console.log("🚀 SHIFT INTENTION DETECTED");
-      // 1. Determine the target mood and themes
       const initialMood = mood as SpecificMood;
       const targetMood = moodMappings[initialMood] || "happy";
       const targetThemes = reasonToThemeMappings[reason] || reasonToThemeMappings["default"];
-
-      // 2. Create the embedding for the TARGET mood
       const query_embedding = createQueryVector(targetMood);
 
-      console.log("🔍 DEBUG - Shift details:", { initialMood, reason, targetMood, targetThemes, query_embedding });
+      console.log("🔍 DEBUG - Shift details:", { initialMood, reason, targetMood, targetThemes });
 
-      // 3. Call a NEW, more advanced RPC function
-      // This function needs to be created in your Supabase backend.
-      // It should perform a search that considers both the mood vector AND the theme keywords.
       const { data, error } = await supabase.rpc("match_movies_by_shift_intention", {
         query_embedding: `[${query_embedding.join(",")}]`,
-        target_themes: targetThemes, // Pass themes as an array of strings
+        target_themes: targetThemes,
         match_threshold: threshold,
         match_count: limit + excludedIds.length,
       });
@@ -123,7 +134,6 @@ export async function GET(request: NextRequest) {
 
     } else {
       console.log("🧘 SIT INTENTION DETECTED");
-      // This is the original logic for matching the current mood
       const query_embedding = createQueryVector(mood as SpecificMood | MoodQuadrant);
       
       const { data, error } = await supabase.rpc("match_movies_by_mood", {
@@ -138,7 +148,6 @@ export async function GET(request: NextRequest) {
 
     let filteredData = moviesData ? moviesData.filter((movie: any) => !excludedIds.includes(movie.id)) : [];
 
-    // --- RESILIENT FALLBACK LOGIC --- (remains the same)
     if (filteredData.length === 0) {
        console.log(`No results for threshold ${threshold}. Retrying with fallback threshold 0.1...`);
       const fallbackEmbedding = createQueryVector(mood as SpecificMood | MoodQuadrant);
@@ -156,7 +165,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No movies found matching your request." }, { status: 404 });
     }
 
-    // --- Fetch TMDb Details for the final list --- (remains the same)
     const finalData = filteredData.slice(0, limit);
     const detailedMovies = await Promise.all(
       finalData.map(async (movie: any) => {
