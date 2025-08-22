@@ -37,15 +37,8 @@ function getSupabaseClient() {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        flowType: "pkce",
       },
-    })
-
-    // Test the connection
-    supabase.auth.getSession().catch((error: any) => {
-      console.error("Supabase connection test failed:", error)
-      if (error.message?.includes("Invalid API key") || error.message?.includes("API key")) {
-        console.error("API key is invalid or project may be paused")
-      }
     })
 
     return supabase
@@ -143,49 +136,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check if we have a real Supabase client or mock
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    setIsConfigured(!!(supabaseUrl && supabaseKey && supabaseUrl.includes(".supabase.co")))
+    const configured = !!(supabaseUrl && supabaseKey && supabaseUrl.includes(".supabase.co"))
+    setIsConfigured(configured)
 
-    // Get initial session
-    client.auth
-      .getSession()
-      .then(({ data: { session }, error }: any) => {
+    console.log("Auth Provider initializing, configured:", configured)
+
+    // Get initial session with retry logic
+    const getInitialSession = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await client.auth.getSession()
+
         if (error) {
           console.error("Session error:", error)
           if (error.message?.includes("Invalid API key")) {
             console.error("Invalid API key - check your Supabase configuration")
           }
+        } else {
+          console.log("Initial session:", session ? "Found" : "None")
+          setUser(session?.user as User | null)
         }
-        setUser(session?.user as User | null)
-        setLoading(false)
-      })
-      .catch((error: any) => {
+      } catch (error: any) {
         console.error("Failed to get session:", error)
+      } finally {
         setLoading(false)
-      })
+      }
+    }
+
+    getInitialSession()
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = client.auth.onAuthStateChange(async (event: string, session: any) => {
-      console.log("Auth state changed:", event)
+      console.log("Auth state changed:", event, session ? "with session" : "no session")
+
       setUser(session?.user as User | null)
       setLoading(false)
 
       if (event === "SIGNED_IN" && session?.user) {
         console.log("User signed in:", session.user.email)
+        // Force a re-render by updating loading state
+        setLoading(false)
       }
 
       if (event === "SIGNED_OUT") {
         console.log("User signed out")
         setHasProfile(false)
       }
+
+      if (event === "TOKEN_REFRESHED") {
+        console.log("Token refreshed")
+      }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      console.log("Auth provider cleanup")
+      subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
     if (user && isConfigured) {
+      console.log("Checking profile for user:", user.email)
       checkProfile()
     } else {
       setHasProfile(false)
@@ -199,7 +214,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const client = getSupabaseClient()
-      const { error } = await client.auth.signInWithOAuth({
+      console.log("Starting Google OAuth sign in...")
+
+      const { data, error } = await client.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}`,
@@ -209,6 +226,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         },
       })
+
       if (error) {
         console.error("Google sign in error:", error)
         if (error.message?.includes("Invalid API key")) {
@@ -216,6 +234,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         throw error
       }
+
+      console.log("OAuth redirect initiated")
     } catch (error: any) {
       console.error("Sign in error:", error)
       throw error
@@ -295,12 +315,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      console.log("Signing out user...")
       const client = getSupabaseClient()
       const { error } = await client.auth.signOut()
       if (error && !error.message?.includes("Invalid API key")) {
         console.error("Error signing out:", error)
         throw error
       }
+      console.log("User signed out successfully")
     } catch (error: any) {
       console.error("Sign out error:", error)
       // Don't throw on sign out errors - just log them
@@ -321,6 +343,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const profileExists = !error && data
+      console.log("Profile check result:", profileExists ? "exists" : "missing")
       setHasProfile(profileExists)
       return profileExists
     } catch (error) {

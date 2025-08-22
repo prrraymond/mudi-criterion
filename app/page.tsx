@@ -15,7 +15,7 @@ import TermsPage from "@/components/terms-page"
 import Footer from "@/components/footer"
 import AuthModal from "@/components/auth-modal"
 import { useAuth } from "@/components/auth-provider"
-import { ArrowLeft, ArrowRight, Home, BookOpen, Globe, User, LogOut } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Home, BookOpen, Globe, User, LogOut } from "lucide-react"
 import ProfileSetup from "@/components/profile-setup"
 
 export type Mood = {
@@ -36,22 +36,33 @@ export default function HomePage() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showProfileSetup, setShowProfileSetup] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { user, loading, signOut, hasProfile, checkProfile } = useAuth()
+  const { user, loading, signOut, hasProfile, checkProfile, isConfigured } = useAuth()
 
   // Fix hydration by ensuring component is mounted
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // Handle OAuth redirect and profile setup
   useEffect(() => {
-    if (user && !loading && mounted) {
+    if (user && !loading && mounted && isConfigured) {
+      console.log("User detected, checking profile:", user.email)
       checkProfile().then((exists) => {
+        console.log("Profile exists:", exists)
         if (!exists) {
           setShowProfileSetup(true)
         }
       })
     }
-  }, [user, loading, checkProfile, mounted])
+  }, [user, loading, checkProfile, mounted, isConfigured])
+
+  // Close auth modal when user signs in
+  useEffect(() => {
+    if (user && showAuthModal) {
+      console.log("User signed in, closing auth modal")
+      setShowAuthModal(false)
+    }
+  }, [user, showAuthModal])
 
   // Prevent hydration mismatch by not rendering auth-dependent content until mounted
   if (!mounted) {
@@ -116,6 +127,17 @@ export default function HomePage() {
     setSelectedIntention(null)
   }
 
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      // Reset any local state
+      resetFlow()
+      setActiveTab("home")
+    } catch (error) {
+      console.error("Sign out error:", error)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       {/* Menu Bar */}
@@ -159,10 +181,22 @@ export default function HomePage() {
             {/* Auth Section - Anchored to far right */}
             <div className="flex items-center">
               {loading ? (
-                <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  <span className="text-xs text-gray-400">Loading...</span>
+                </div>
               ) : user ? (
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-300 font-light">Welcome, {getUserName()}</span>
+                  <div className="flex items-center gap-2">
+                    {user.user_metadata?.avatar_url && (
+                      <img
+                        src={user.user_metadata.avatar_url || "/placeholder.svg"}
+                        alt="Profile"
+                        className="w-6 h-6 rounded-full border border-white/20"
+                      />
+                    )}
+                    <span className="text-sm text-gray-300 font-light">Welcome, {getUserName()}</span>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -175,7 +209,7 @@ export default function HomePage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={signOut}
+                    onClick={handleSignOut}
                     className="text-white/60 hover:text-white hover:bg-white/10 p-2"
                     title="Sign out"
                   >
@@ -270,9 +304,7 @@ export default function HomePage() {
                     <span className="font-serif"> Criterions</span>
                   </h1>
                   <div className="h-px w-16 bg-white/30 mx-auto my-3"></div>
-                  <p className="text-gray-400 mt-1 font-light tracking-wide">
-                    Films that might resonate with you
-                  </p>
+                  <p className="text-gray-400 mt-1 font-light tracking-wide">Films that might resonate with you</p>
                 </div>
 
                 {/* Movie recommendations in full width */}
