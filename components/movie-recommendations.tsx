@@ -5,157 +5,167 @@ import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Info, Play, RotateCcw, User, Eye, Bookmark, X, Check } from "lucide-react"
+import { Info, Play, RotateCcw, User, Eye, Bookmark, X } from "lucide-react"
 import type { Mood, Reason, Intention } from "@/app/page"
 import { useAuth } from "./auth-provider"
 import { supabase } from "@/lib/supabase"
 import AuthModal from "./auth-modal"
+import SocialShareButton from "./social-share-button"
 
+import { Swiper, SwiperSlide } from "swiper/react"
+import { Pagination } from "swiper/modules"
+import "swiper/css"
+import "swiper/css/pagination"
+
+// Interface definitions
 interface StreamingProvider {
-  provider_id: number
-  provider_name: string
-  logo_path: string
-  display_priority: number
+  provider_id: number;
+  provider_name: string;
+  logo_path: string;
+  display_priority: number;
 }
-
 interface WatchProvider {
-  flatrate?: StreamingProvider[]
-  rent?: StreamingProvider[]
-  buy?: StreamingProvider[]
-  link?: string
+  flatrate?: StreamingProvider[];
+  rent?: StreamingProvider[];
+  buy?: StreamingProvider[];
+  link?: string;
 }
-
 interface Movie {
-  id: number
-  title: string
-  release_date: string
-  overview: string
-  poster_path: string
-  watch_providers?: WatchProvider
+  id: number;
+  title: string;
+  release_date: string;
+  overview: string;
+  poster_path: string;
+  watch_providers?: WatchProvider;
 }
-
 interface MovieRecommendationsProps {
-  mood: Mood
-  reason: Reason
-  intention: Intention
+  mood: Mood;
+  reason: Reason;
+  intention: Intention;
 }
 
-// Function to get mood-based colors
 const getMoodColors = (mood: Mood) => {
   if (mood.energy === "high" && mood.pleasantness === "pleasant") {
     return {
       border: "border-orange-400/60 hover:border-orange-400/80",
       shadow: "shadow-orange-500/20",
       glow: "shadow-lg shadow-orange-500/25",
-      gradient: "from-orange-500/10 to-yellow-500/10",
-    }
+    };
   }
-
   if (mood.energy === "high" && mood.pleasantness === "unpleasant") {
     return {
       border: "border-red-400/60 hover:border-red-400/80",
       shadow: "shadow-red-500/20",
       glow: "shadow-lg shadow-red-500/25",
-      gradient: "from-red-500/10 to-pink-500/10",
-    }
+    };
   }
-
   if (mood.energy === "low" && mood.pleasantness === "pleasant") {
     return {
       border: "border-blue-400/60 hover:border-blue-400/80",
       shadow: "shadow-blue-500/20",
       glow: "shadow-lg shadow-blue-500/25",
-      gradient: "from-blue-500/10 to-teal-500/10",
-    }
+    };
   }
-
   if (mood.energy === "low" && mood.pleasantness === "unpleasant") {
     return {
       border: "border-purple-400/60 hover:border-purple-400/80",
       shadow: "shadow-purple-500/20",
       glow: "shadow-lg shadow-purple-500/25",
-      gradient: "from-purple-500/10 to-indigo-500/10",
-    }
+    };
   }
-
   return {
     border: "border-white/20 hover:border-white/40",
     shadow: "shadow-white/10",
     glow: "shadow-lg shadow-white/20",
-    gradient: "from-white/5 to-white/5",
-  }
-}
+  };
+};
 
 export default function MovieRecommendations({ mood, reason, intention }: MovieRecommendationsProps) {
-  const [movies, setMovies] = useState<Movie[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [showDetails, setShowDetails] = useState<number | null>(null)
-  const [watchedMovies, setWatchedMovies] = useState<Set<number>>(new Set())
-  const [savedMovies, setSavedMovies] = useState<Set<number>>(new Set())
-  const [rejectedMovies, setRejectedMovies] = useState<Set<number>>(new Set())
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const touchStartX = useRef<number>(0)
-  const touchStartY = useRef<number>(0)
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState<number | null>(null);
+  const [watchedMovies, setWatchedMovies] = useState<Set<number>>(new Set());
+  const [savedMovies, setSavedMovies] = useState<Set<number>>(new Set());
+  const [rejectedMovies, setRejectedMovies] = useState<Set<number>>(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
-  const { user, loading: authLoading } = useAuth()
+  // Make refs nullable to avoid dropping swipes that start at coordinate 0
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    const savedWatched = localStorage.getItem("mudi-watched-movies")
+    const savedWatched = localStorage.getItem("mudi-watched-movies");
     if (savedWatched) {
-      setWatchedMovies(new Set(JSON.parse(savedWatched)))
+      setWatchedMovies(new Set(JSON.parse(savedWatched)));
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
     if (user) {
-      fetchSavedMovies()
+      fetchSavedMovies();
     }
-  }, [user])
+  }, [user]);
+
+  const logUserFeedback = async (movie: Movie, action: 'saved' | 'watched' | 'rejected') => {
+    if (!user) return;
+
+    const feedbackData = {
+      user_id: user.id,
+      movie_id: movie.id,
+      mood: mood.label,
+      reason: reason,
+      intention: intention,
+      action: action,
+    };
+
+    try {
+      const { error } = await supabase.from('user_feedback').insert(feedbackData);
+      if (error) {
+        console.error(`Error logging '${action}' action:`, error);
+      }
+    } catch (err) {
+      console.error('An unexpected error occurred while logging feedback:', err);
+    }
+  };
 
   const fetchSavedMovies = async () => {
-    if (!user) return
-
+    if (!user) return;
     try {
-      const { data, error } = await supabase.from("saved_movies").select("movie_id").eq("user_id", user.id)
-
+      const { data, error } = await supabase.from("saved_movies").select("movie_id").eq("user_id", user.id);
       if (error) {
-        console.error("Error fetching saved movies:", error)
-        return
+        console.error("Error fetching saved movies:", error);
+        return;
       }
-
-      const savedIds = new Set(data.map((item) => item.movie_id))
-      setSavedMovies(savedIds)
+      const savedIds = new Set(data.map((item) => item.movie_id));
+      setSavedMovies(savedIds);
     } catch (error) {
-      console.error("Error fetching saved movies:", error)
+      console.error("Error fetching saved movies:", error);
     }
-  }
+  };
 
-  const toggleSavedMovie = async (movie: Movie, event: React.MouseEvent) => {
-    event.stopPropagation()
-
+  const toggleSavedMovie = async (movie: Movie, event?: React.MouseEvent) => {
+    event?.stopPropagation();
     if (!user) {
-      setShowAuthModal(true)
-      return
+      setShowAuthModal(true);
+      return;
     }
-
-    const isSaved = savedMovies.has(movie.id)
-
+    const isSaved = savedMovies.has(movie.id);
     try {
       if (isSaved) {
-        const { error } = await supabase.from("saved_movies").delete().eq("user_id", user.id).eq("movie_id", movie.id)
-
+        const { error } = await supabase.from("saved_movies").delete().eq("user_id", user.id).eq("movie_id", movie.id);
         if (error) {
-          console.error("Error removing saved movie:", error)
-          return
+          console.error("Error removing saved movie:", error);
+          return;
         }
-
         setSavedMovies((prev) => {
-          const newSet = new Set(prev)
-          newSet.delete(movie.id)
-          return newSet
-        })
+          const newSet = new Set(prev);
+          newSet.delete(movie.id);
+          return newSet;
+        });
       } else {
         const { error } = await supabase.from("saved_movies").insert({
           user_id: user.id,
@@ -166,61 +176,45 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
           movie_release_date: movie.release_date,
           mood_when_saved: mood.label,
           reason_when_saved: reason,
-        })
-
+        });
         if (error) {
-          console.error("Error saving movie:", error)
-          return
+          console.error("Error saving movie:", error);
+          return;
         }
-
-        setSavedMovies((prev) => new Set([...prev, movie.id]))
+        setSavedMovies((prev) => new Set([...prev, movie.id]));
+        await logUserFeedback(movie, 'saved');
       }
     } catch (error) {
-      console.error("Error toggling saved movie:", error)
+      console.error("Error toggling saved movie:", error);
     }
-  }
+  };
 
   const fetchAdditionalMovie = async () => {
-    if (isRefreshing) return null
-
+    if (isRefreshing) return null;
     try {
-      setIsRefreshing(true)
-      console.log("=== FETCHING ADDITIONAL MOVIE ===")
-
+      setIsRefreshing(true);
       const getMoodKey = (mood: Mood): string => {
         return mood.label.toLowerCase();
-      }
-
-      const moodKey = getMoodKey(mood)
-
-      const currentMovieIds = movies.map((m) => m.id)
-      const rejectedMovieIds = Array.from(rejectedMovies)
-      const allExcludedIds = [...new Set([...currentMovieIds, ...rejectedMovieIds])]
-
+      };
+      const moodKey = getMoodKey(mood);
+      const currentMovieIds = movies.map((m) => m.id);
+      const rejectedMovieIds = Array.from(rejectedMovies);
+      const allExcludedIds = [...new Set([...currentMovieIds, ...rejectedMovieIds])];
       const attempts = [
         { limit: 20, threshold: 0.3 },
         { limit: 50, threshold: 0.1 },
         { limit: 100, threshold: 0.05 },
-      ]
-
+      ];
       for (const attempt of attempts) {
-        const excludeParam = allExcludedIds.length > 0 ? `&exclude=${allExcludedIds.join(",")}` : ""
-        const apiUrl = `/api/movies/recommendations?mood=${moodKey}&limit=${attempt.limit}&threshold=${attempt.threshold}${excludeParam}`
-        console.log("Trying API call:", apiUrl)
+        const excludeParam = allExcludedIds.length > 0 ? `&exclude=${allExcludedIds.join(",")}` : "";
+        const apiUrl = `/api/movies/recommendations?mood=${moodKey}&intention=${intention}&reason=${encodeURIComponent(reason)}&limit=${attempt.limit}&threshold=${attempt.threshold}${excludeParam}`;
+        const response = await fetch(apiUrl);
+        if (!response.ok) continue;
 
-        const response = await fetch(apiUrl)
-
-        if (!response.ok) {
-          console.error("API call failed:", response.status, response.statusText)
-          continue
-        }
-
-        const recommendations = await response.json()
-        console.log(`Received ${recommendations.length} recommendations`)
-
+        const recommendations = await response.json();
         if (recommendations.length > 0) {
-          const newMovie = recommendations[0]
-          const transformedMovie = {
+          const newMovie = recommendations[0];
+          const transformedMovie: Movie = {
             id: newMovie.id,
             title: newMovie.title,
             release_date: newMovie.release_date,
@@ -231,162 +225,99 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
                 : `https://image.tmdb.org/t/p/w500${newMovie.poster_path}`
               : "/placeholder.svg?height=300&width=200&text=No+Image",
             watch_providers: newMovie.watch_providers,
-          }
-
-          console.log("✅ Adding new movie:", transformedMovie.title)
-          setMovies((prev) => {
-            const updated = [...prev, transformedMovie]
-            console.log("Updated movies list length:", updated.length)
-            return updated
-          })
-          return transformedMovie
+          };
+          // Avoid accidental duplicates
+          setMovies((prev) =>
+            prev.some((m) => m.id === transformedMovie.id) ? prev : [...prev, transformedMovie]
+          );
+          return transformedMovie;
         }
       }
-
-      console.log("❌ No new movies found after all attempts")
-      return null
+      return null;
     } catch (err) {
-      console.error("❌ Error fetching additional movie:", err)
-      return null
+      console.error("❌ Error fetching additional movie:", err);
+      return null;
     } finally {
-      setIsRefreshing(false)
-      console.log("=== FETCH COMPLETE ===")
+      setIsRefreshing(false);
     }
-  }
+  };
 
-  const toggleWatched = async (movieId: number, event: React.MouseEvent) => {
-    event.stopPropagation()
-
-    const newWatchedMovies = new Set(watchedMovies)
-    const wasWatched = watchedMovies.has(movieId)
-
+  const toggleWatched = async (movie: Movie, event: React.MouseEvent) => {
+    event.stopPropagation();
+    const newWatchedMovies = new Set(watchedMovies);
+    const wasWatched = newWatchedMovies.has(movie.id);
     if (wasWatched) {
-      newWatchedMovies.delete(movieId)
+      newWatchedMovies.delete(movie.id);
     } else {
-      newWatchedMovies.add(movieId)
-      console.log("Movie marked as watched, fetching additional movie...")
-      const newMovie = await fetchAdditionalMovie()
-      if (newMovie) {
-        console.log("Successfully added new movie:", newMovie.title)
-      } else {
-        console.log("Failed to fetch additional movie")
-      }
+      newWatchedMovies.add(movie.id);
+      await logUserFeedback(movie, 'watched');
+      await fetchAdditionalMovie();
     }
+    setWatchedMovies(newWatchedMovies);
+    localStorage.setItem("mudi-watched-movies", JSON.stringify(Array.from(newWatchedMovies)));
+  };
 
-    setWatchedMovies(newWatchedMovies)
-    localStorage.setItem("mudi-watched-movies", JSON.stringify(Array.from(newWatchedMovies)))
-  }
+  const rejectMovie = async (movie: Movie, event?: React.MouseEvent) => {
+    event?.stopPropagation();
+    setRejectedMovies((prev) => new Set(prev).add(movie.id));
+    setMovies((prev) => prev.filter((m) => m.id !== movie.id));
+    await logUserFeedback(movie, 'rejected');
+    await fetchAdditionalMovie();
+  };
 
-  const rejectMovie = async (movieId: number, event?: React.MouseEvent) => {
-    if (event) event.stopPropagation()
+  const acceptMovie = async (movie: Movie, event?: React.MouseEvent) => {
+    event?.stopPropagation();
+    await toggleSavedMovie(movie);
+    await fetchAdditionalMovie();
+  };
 
-    console.log("=== REJECTING MOVIE ===", movieId)
+  const handleTouchStart = (e: React.TouchEvent, movie: Movie) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
 
-    const newRejectedMovies = new Set(rejectedMovies)
-    newRejectedMovies.add(movieId)
-    setRejectedMovies(newRejectedMovies)
-
-    console.log("Updated rejected movies:", Array.from(newRejectedMovies))
-
-    setMovies((prev) => {
-      const filtered = prev.filter((movie) => movie.id !== movieId)
-      console.log("Movies after removal:", filtered.length)
-      return filtered
-    })
-
-    console.log("Fetching replacement movie...")
-    const newMovie = await fetchAdditionalMovie()
-    if (newMovie) {
-      console.log("✅ Successfully added replacement movie:", newMovie.title)
-    } else {
-      console.log("❌ Failed to fetch replacement movie")
-    }
-  }
-
-  const acceptMovie = async (movieId: number, event?: React.MouseEvent) => {
-    if (event) event.stopPropagation()
-
-    const movie = movies.find((m) => m.id === movieId)
-    if (!movie) return
-
-    await toggleSavedMovie(movie, event as any)
-
-    console.log("Movie saved, fetching additional movie...")
-    const newMovie = await fetchAdditionalMovie()
-    if (newMovie) {
-      console.log("Successfully added new movie:", newMovie.title)
-    } else {
-      console.log("Failed to fetch replacement movie")
-    }
-  }
-
-  const handleTouchStart = (e: React.TouchEvent, movieId: number) => {
-    touchStartX.current = e.touches[0].clientX
-    touchStartY.current = e.touches[0].clientY
-  }
-
-  const handleTouchEnd = (e: React.TouchEvent, movieId: number) => {
-    if (!touchStartX.current || !touchStartY.current) return
-
-    const touchEndX = e.changedTouches[0].clientX
-    const touchEndY = e.changedTouches[0].clientY
-
-    const deltaX = touchEndX - touchStartX.current
-    const deltaY = touchEndY - touchStartY.current
-
+  const handleTouchEnd = (e: React.TouchEvent, movie: Movie) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaX = touchEndX - touchStartX.current;
+    const deltaY = touchEndY - touchStartY.current;
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 100) {
       if (deltaX > 0) {
-        acceptMovie(movieId)
+        acceptMovie(movie);
       } else {
-        rejectMovie(movieId)
+        rejectMovie(movie);
       }
     }
-
-    touchStartX.current = 0
-    touchStartY.current = 0
-  }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
 
   const handleCardClick = (index: number) => {
-    setShowDetails(showDetails === index ? null : index)
-  }
+    setShowDetails(showDetails === index ? null : index);
+  };
 
   const handleStreamingClick = (provider: StreamingProvider, movie: Movie, event: React.MouseEvent) => {
-    event.stopPropagation()
-
-    const searchQuery = encodeURIComponent(movie.title)
-    let url = `https://www.google.com/search?q=${searchQuery}+${provider.provider_name}`
-
+    event.stopPropagation();
+    const searchQuery = encodeURIComponent(movie.title);
+    let url = `https://www.google.com/search?q=${searchQuery}+${provider.provider_name}`;
     switch (provider.provider_name.toLowerCase()) {
-      case "netflix":
-        url = `https://www.netflix.com/search?q=${searchQuery}`
-        break
-      case "hulu":
-        url = `https://www.hulu.com/search?q=${searchQuery}`
-        break
-      case "amazon prime video":
-        url = `https://www.amazon.com/s?k=${searchQuery}&i=prime-instant-video`
-        break
-      case "disney plus":
-        url = `https://www.disneyplus.com/search?q=${searchQuery}`
-        break
-      case "hbo max":
-        url = `https://www.hbomax.com/search?q=${searchQuery}`
-        break
+      case "netflix": url = `https://www.netflix.com/search?q=${searchQuery}`; break;
+      case "hulu": url = `https://www.hulu.com/search?q=${searchQuery}`; break;
+      case "amazon prime video": url = `https://www.amazon.com/s?k=${searchQuery}&i=prime-instant-video`; break;
+      case "disney plus": url = `https://www.disneyplus.com/search?q=${searchQuery}`; break;
+      case "hbo max": url = `https://www.hbomax.com/search?q=${searchQuery}`; break;
     }
-
-    window.open(url, "_blank")
-  }
+    window.open(url, "_blank");
+  };
 
   const renderStreamingOptions = (movie: Movie) => {
-    const providers = movie.watch_providers
-    if (!providers) return null
-
+    const providers = movie.watch_providers;
+    if (!providers) return null;
     const allProviders = [...(providers.flatrate || []), ...(providers.rent || []), ...(providers.buy || [])].filter(
-      (provider, index, self) => index === self.findIndex((p) => p.provider_id === provider.provider_id),
-    )
-
-    if (allProviders.length === 0) return null
-
+      (provider, index, self) => index === self.findIndex((p) => p.provider_id === provider.provider_id)
+    );
+    if (allProviders.length === 0) return null;
     return (
       <div className="mt-2 pt-2 border-t border-white/10">
         <div className="flex items-center gap-2 flex-wrap">
@@ -396,11 +327,9 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
               <span className="text-xs text-green-400 font-light">Stream</span>
             </div>
           )}
-
           {allProviders.slice(0, 6).map((provider) => {
-            const isStreaming = providers.flatrate?.some((p) => p.provider_id === provider.provider_id)
-            const isRental = providers.rent?.some((p) => p.provider_id === provider.provider_id)
-
+            const isStreaming = providers.flatrate?.some((p) => p.provider_id === provider.provider_id);
+            const isRental = providers.rent?.some((p) => p.provider_id === provider.provider_id);
             return (
               <Button
                 key={provider.provider_id}
@@ -425,11 +354,11 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
                   height={28}
                   className="rounded"
                   onError={(e) => {
-                    e.currentTarget.src = "/placeholder.svg?height=28&width=28&text=Logo"
+                    (e.currentTarget as HTMLImageElement).src = "/placeholder.svg?height=28&width=28&text=Logo";
                   }}
                 />
               </Button>
-            )
+            );
           })}
           {allProviders.length > 6 && (
             <div className="flex items-center justify-center w-7 h-7 bg-white/10 rounded-md flex-shrink-0">
@@ -438,50 +367,28 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
           )}
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   const fetchRecommendations = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true)
-      setError(null)
-
-      const getMoodKey = (mood: Mood): string => {
-        return mood.label.toLowerCase();
-      }
-
-      const moodKey = getMoodKey(mood)
-      const apiUrl = `/api/movies/recommendations?mood=${moodKey}&limit=5&threshold=0.6`
-
-      console.log("🔧 FRONTEND DEBUG - Sending mood:", moodKey)
-
-      console.log("Fetching recommendations from:", apiUrl)
-      console.log("Mood details:", { mood, reason, intention, moodKey })
-
-      const response = await fetch(apiUrl)
-
-      console.log("API Response status:", response.status)
-      console.log("API Response headers:", Object.fromEntries(response.headers.entries()))
-
+      const getMoodKey = (m: Mood): string => m.label.toLowerCase();
+      const moodKey = getMoodKey(mood);
+      const apiUrl = `/api/movies/recommendations?mood=${moodKey}&intention=${intention}&reason=${encodeURIComponent(reason)}&limit=5&threshold=0.6`;
+      const response = await fetch(apiUrl);
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error("API Error Response:", errorText)
-
-        let errorData
+        const errorText = await response.text();
+        let errorData;
         try {
-          errorData = JSON.parse(errorText)
+          errorData = JSON.parse(errorText);
         } catch {
-          errorData = { error: errorText }
+          errorData = { error: errorText };
         }
-
-        throw new Error(
-          `API request failed: ${response.status} ${response.statusText}. ${errorData.error || errorData.details || ""}`,
-        )
+        throw new Error(`API request failed: ${response.status}. ${errorData.error || ""}`);
       }
-
-      const recommendations = await response.json()
-      console.log("Received recommendations:", recommendations)
-
+      const recommendations = await response.json();
       const transformedMovies: Movie[] = recommendations.map((movie: any) => ({
         id: movie.id,
         title: movie.title,
@@ -493,23 +400,18 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
             : `https://image.tmdb.org/t/p/w500${movie.poster_path}`
           : "/placeholder.svg?height=300&width=200&text=No+Image",
         watch_providers: movie.watch_providers,
-      }))
-
-      console.log("Transformed movies:", transformedMovies)
-      setMovies(transformedMovies)
+      }));
+      setMovies(transformedMovies);
     } catch (err) {
-      console.error("Error fetching recommendations:", err)
-      setError(err instanceof Error ? err.message : "Failed to fetch recommendations. Please try again.")
-
-      setMovies([])
+      setError(err instanceof Error ? err.message : "Failed to fetch recommendations.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchRecommendations()
-  }, [mood, reason, intention])
+    fetchRecommendations();
+  }, [mood, reason, intention]);
 
   if (loading) {
     return (
@@ -517,7 +419,7 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
         <div className="h-10 w-10 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
         <p className="text-gray-400 font-light">Finding films that match your mood...</p>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -532,7 +434,7 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
           Try Again
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -542,13 +444,12 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-white/70" />
             <span className="text-sm text-gray-300">
-              {user ? `Signed in as ${user.email}` : "Sign in to save movies"}
+              {user ? `Signed in as ${user.email?.split('@')[0]}` : "Sign in to save movies"}
             </span>
           </div>
           {!user && (
             <Button
-              variant="outline"
-              size="sm"
+              variant="outline" size="sm"
               className="border-white/20 text-white hover:bg-white/10 bg-transparent text-xs"
               onClick={() => setShowAuthModal(true)}
             >
@@ -563,18 +464,9 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
           <Info className="h-5 w-5 text-white/70 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-gray-300">
             <p className="font-medium mb-1">Your selections:</p>
-            <p className="font-light">
-              Feeling: <span className="font-normal text-white">{mood.label}</span>
-            </p>
-            <p className="font-light">
-              Reason: <span className="font-normal text-white">{reason}</span>
-            </p>
-            <p className="font-light">
-              Intention:{" "}
-              <span className="font-normal text-white">
-                {intention === "sit" ? "Sit with this feeling" : "Shift to positive"}
-              </span>
-            </p>
+            <p className="font-light">Feeling: <span className="font-normal text-white">{mood.label}</span></p>
+            <p className="font-light">Reason: <span className="font-normal text-white">{reason}</span></p>
+            <p className="font-light">Intention: <span className="font-normal text-white">{intention === "sit" ? "Sit with this feeling" : "Shift to positive"}</span></p>
           </div>
         </div>
       </div>
@@ -582,167 +474,51 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
       <h2 className="text-lg font-serif text-center mb-2">Recommended Films</h2>
       <div className="h-px w-16 bg-white/30 mx-auto mb-6"></div>
 
-      <div className="w-full max-w-4xl mx-auto">
-        <div className="space-y-4 px-6">
-          {movies.map((movie, index) => {
-            const moodColors = getMoodColors(mood)
-            const isWatched = watchedMovies.has(movie.id)
-            const isSaved = savedMovies.has(movie.id)
+      <div className="w-full max-w-4xl mx-auto md:px-6">
+        {/* Mobile: Swiper */}
+        <div className="md:hidden">
+          <Swiper
+            modules={[Pagination]} spaceBetween={16} slidesPerView={1.15}
+            centeredSlides={true} pagination={{ clickable: true }} className="!pb-10"
+          >
+            {movies.map((movie, index) => (
+              <SwiperSlide key={`${movie.id}-mobile`}>
+                <MovieCard
+                  movie={movie} index={index} mood={mood}
+                  isWatched={watchedMovies.has(movie.id)} isSaved={savedMovies.has(movie.id)}
+                  showDetails={showDetails === index} onCardClick={() => handleCardClick(index)}
+                  onReject={rejectMovie} onToggleWatched={toggleWatched}
+                  onToggleSaved={toggleSavedMovie} reason={reason} intention={intention}
+                  renderStreamingOptions={renderStreamingOptions}
+                  onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
+                />
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        </div>
 
-            return (
-              <Card
-                key={movie.id}
-                className={`overflow-hidden bg-black border transition-all duration-300 cursor-pointer w-full ${
-                  isWatched
-                    ? `${moodColors.border.replace("/60", "/20").replace("/80", "/30")} opacity-60`
-                    : `${moodColors.border} ${moodColors.glow}`
-                }`}
-                onClick={() => handleCardClick(index)}
-                onTouchStart={(e) => handleTouchStart(e, movie.id)}
-                onTouchEnd={(e) => handleTouchEnd(e, movie.id)}
-              >
-                <div className="flex flex-row h-56 lg:h-60">
-                  <div className="w-40 lg:w-44 flex-shrink-0 relative">
-                    <div className="h-full relative">
-                      <Image
-                        src={movie.poster_path || "/placeholder.svg?height=450&width=300&text=No+Image"}
-                        alt={movie.title}
-                        fill
-                        sizes="224px"
-                        className="object-cover rounded-l-lg"
-                        onError={(e) => {
-                          e.currentTarget.src = "/placeholder.svg?height=450&width=300&text=No+Image"
-                        }}
-                      />
-                    </div>
-
-                    {isWatched && (
-                      <div className="absolute inset-0 bg-black/40 z-10 flex items-center justify-center pointer-events-none rounded-l-lg">
-                        <div className="bg-black/80 px-3 py-1 rounded-full border border-white/20">
-                          <span className="text-white/80 text-sm font-light">Already Watched</span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="absolute bottom-3 left-3 right-3 z-20 flex justify-between items-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="p-1.5 rounded-full bg-black/40 text-white/60 hover:bg-black/60 hover:text-white/80 transition-all backdrop-blur-sm"
-                        onClick={(e) => rejectMovie(movie.id, e)}
-                        title="Reject this movie"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`p-1.5 rounded-full transition-all backdrop-blur-sm ${
-                            isSaved
-                              ? "bg-blue-500/30 text-blue-300 hover:bg-blue-500/40"
-                              : "bg-black/40 text-white/60 hover:bg-black/60 hover:text-white/80"
-                          }`}
-                          onClick={(e) => toggleSavedMovie(movie, e)}
-                          title={isSaved ? "Remove from saved" : "Save movie"}
-                        >
-                          <Bookmark className={`h-3.5 w-3.5 ${isSaved ? "fill-current" : ""}`} />
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`p-1.5 rounded-full transition-all backdrop-blur-sm ${
-                            isWatched
-                              ? "bg-green-500/30 text-green-300 hover:bg-green-500/40"
-                              : "bg-black/40 text-white/60 hover:bg-black/60 hover:text-white/80"
-                          }`}
-                          onClick={(e) => toggleWatched(movie.id, e)}
-                          title={isWatched ? "Mark as unwatched" : "Mark as watched"}
-                        >
-                          <Eye className={`h-3.5 w-3.5 ${isWatched ? "fill-current" : ""}`} />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 p-3 lg:p-4 flex flex-col justify-between min-w-0">
-                    <div className="flex flex-row items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-serif text-lg lg:text-xl tracking-tight text-white leading-tight">
-                          {movie.title}
-                        </h3>
-                        <p className="text-xs lg:text-sm text-gray-400 mt-1 font-light">
-                          {movie.release_date?.substring(0, 4)}
-                        </p>
-                      </div>
-
-                      <div className="ml-4 flex-shrink-0">
-                        {movie.watch_providers?.flatrate && movie.watch_providers.flatrate.length > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Play className="h-3 w-3 text-green-400" />
-                            <span className="text-xs text-green-400 font-light">Available to Stream</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 mb-1">
-                      {showDetails === index ? (
-                        <>
-                          <p className="text-xs lg:text-sm font-light leading-relaxed text-gray-300">
-                            {movie.overview}
-                          </p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="mt-1 text-gray-400 hover:text-white hover:bg-transparent p-0 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setShowDetails(null)
-                            }}
-                          >
-                            Show less
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-xs lg:text-sm line-clamp-2 font-light text-gray-300">
-                            {movie.overview.length > 100 ? `${movie.overview.substring(0, 100)}...` : movie.overview}
-                          </p>
-                          {movie.overview.length > 100 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="mt-1 text-gray-400 hover:text-white hover:bg-transparent p-0 text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setShowDetails(index)
-                              }}
-                            >
-                              Show more
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {renderStreamingOptions(movie)}
-                  </div>
-                </div>
-              </Card>
-            )
-          })}
-
-          {isRefreshing && (
-            <div className="flex items-center justify-center py-4">
-              <RotateCcw className="h-5 w-5 animate-spin text-white/70 mr-2" />
-              <span className="text-sm text-gray-400 font-light">Finding more films...</span>
-            </div>
-          )}
+        {/* Desktop list */}
+        <div className="hidden md:block space-y-4">
+          {movies.map((movie, index) => (
+            <MovieCard
+              key={`${movie.id}-desktop`} movie={movie} index={index} mood={mood}
+              isWatched={watchedMovies.has(movie.id)} isSaved={savedMovies.has(movie.id)}
+              showDetails={showDetails === index} onCardClick={() => handleCardClick(index)}
+              onReject={rejectMovie} onToggleWatched={toggleWatched}
+              onToggleSaved={toggleSavedMovie} reason={reason} intention={intention}
+              renderStreamingOptions={renderStreamingOptions}
+              onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
+            />
+          ))}
         </div>
       </div>
+
+      {isRefreshing && (
+        <div className="flex items-center justify-center py-4">
+          <RotateCcw className="h-5 w-5 animate-spin text-white/70 mr-2" />
+          <span className="text-sm text-gray-400 font-light">Finding more films...</span>
+        </div>
+      )}
 
       {(watchedMovies.size > 0 || (user && savedMovies.size > 0)) && (
         <div className="text-center pt-4 border-t border-white/10 space-y-1 mx-6">
@@ -761,5 +537,211 @@ export default function MovieRecommendations({ mood, reason, intention }: MovieR
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
     </div>
-  )
+  );
+}
+
+// Standalone MovieCard component
+interface MovieCardProps {
+  movie: Movie;
+  index: number;
+  mood: Mood;
+  isWatched: boolean;
+  isSaved: boolean;
+  showDetails: boolean;
+  onCardClick: () => void;
+  onReject: (movie: Movie, e?: React.MouseEvent) => void;
+  onToggleWatched: (movie: Movie, e: React.MouseEvent) => void;
+  onToggleSaved: (movie: Movie, e: React.MouseEvent) => void;
+  reason: Reason;
+  intention: Intention;
+  renderStreamingOptions: (movie: Movie) => React.ReactNode;
+  onTouchStart: (e: React.TouchEvent, movie: Movie) => void;
+  onTouchEnd: (e: React.TouchEvent, movie: Movie) => void;
+}
+
+function MovieCard({
+  movie, mood, isWatched, isSaved, showDetails,
+  onCardClick, onReject, onToggleWatched, onToggleSaved,
+  reason, intention, renderStreamingOptions,
+  onTouchStart, onTouchEnd
+}: MovieCardProps) {
+  const moodColors = getMoodColors(mood);
+
+  const DesktopLayout = () => (
+    <div className="flex flex-row h-60">
+      <div className="w-44 flex-shrink-0 relative">
+        <Image
+          src={movie.poster_path || "/placeholder.svg"} alt={movie.title}
+          fill sizes="176px" className="object-cover rounded-l-lg"
+        />
+        {/* Desktop overlay actions (bottom-left over poster) */}
+        <div className="absolute bottom-3 left-3 right-3 z-20 flex justify-between items-center">
+          <Button
+            variant="ghost" size="sm"
+            className="p-1.5 rounded-full bg-black/40 text-white/80 hover:bg-black/60 transition-all backdrop-blur-sm"
+            onClick={(e) => onReject(movie, e)} title="Reject this movie"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost" size="sm"
+              className={`p-1.5 rounded-full backdrop-blur-sm ${isSaved ? "bg-blue-500/40 text-white" : "bg-black/40 text-white/80 hover:bg-black/60"}`}
+              onClick={(e) => onToggleSaved(movie, e)} title={isSaved ? "Remove from saved" : "Save movie"}
+            >
+              <Bookmark className={`h-4 w-4 ${isSaved ? "fill-current" : ""}`} />
+            </Button>
+            <Button
+              variant="ghost" size="sm"
+              className={`p-1.5 rounded-full backdrop-blur-sm ${isWatched ? "bg-green-500/40 text-white" : "bg-black/40 text-white/80 hover:bg-black/60"}`}
+              onClick={(e) => onToggleWatched(movie, e)} title={isWatched ? "Mark as unwatched" : "Mark as watched"}
+            >
+              <Eye className={`h-4 w-4 ${isWatched ? "fill-current" : ""}`} />
+            </Button>
+          </div>
+        </div>
+      </div>
+      <div className="p-4 flex-1 flex flex-col justify-between min-w-0">
+        <div>
+          <div className="flex flex-row items-start justify-between">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-serif text-lg lg:text-xl tracking-tight text-white leading-tight truncate">
+                {movie.title}
+              </h3>
+              <p className="text-xs lg:text-sm text-gray-400 mt-1 font-light">
+                {movie.release_date?.substring(0, 4)}
+              </p>
+            </div>
+            <div className="ml-4 flex-shrink-0">
+              <SocialShareButton movie={movie} mood={mood} reason={reason} intention={intention} />
+            </div>
+          </div>
+          <div className="mt-2">
+            {showDetails ? (
+              <>
+                <p className="text-sm font-light text-gray-300">{movie.overview}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 text-gray-400 hover:text-white hover:bg-transparent p-0 text-xs"
+                  onClick={(e) => { e.stopPropagation(); onCardClick(); }}
+                >
+                  Show less
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-light text-gray-300 line-clamp-3">{movie.overview}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 text-gray-400 hover:text-white hover:bg-transparent p-0 text-xs"
+                  onClick={(e) => { e.stopPropagation(); onCardClick(); }}
+                >
+                  Show more
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+        {renderStreamingOptions(movie)}
+      </div>
+    </div>
+  );
+
+  const MobileLayout = () => (
+    <div className="relative w-full aspect-[2/3] text-white rounded-lg overflow-hidden">
+      <Image
+        src={movie.poster_path || "/placeholder.svg"} alt={movie.title}
+        fill sizes="100vw" className="object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent" />
+      <div className="absolute top-4 right-4 z-10">
+        <SocialShareButton movie={movie} mood={mood} reason={reason} intention={intention} />
+      </div>
+      <div className="absolute bottom-4 left-4 right-4 z-10">
+        <h3 className="font-serif text-xl tracking-tight leading-tight">
+          {movie.title}
+        </h3>
+        <p className="text-sm text-gray-300 mt-1 font-light">
+          {movie.release_date?.substring(0, 4)}
+        </p>
+
+        {/* Mobile overview with show more/less parity */}
+        <div className="mt-2">
+          {showDetails ? (
+            <>
+              <p className="text-sm font-light text-gray-300">{movie.overview}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-1 text-gray-300 hover:text-white hover:bg-transparent p-0 text-xs"
+                onClick={(e) => { e.stopPropagation(); onCardClick(); }}
+              >
+                Show less
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-light text-gray-300 line-clamp-3">{movie.overview}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-1 text-gray-300 hover:text-white hover:bg-transparent p-0 text-xs"
+                onClick={(e) => { e.stopPropagation(); onCardClick(); }}
+              >
+                Show more
+              </Button>
+            </>
+          )}
+        </div>
+
+        <div className="mt-4 flex justify-between items-center">
+          <Button
+            variant="ghost" size="sm"
+            className="p-2 rounded-full bg-black/50 text-white/80 hover:bg-black/70 backdrop-blur-sm"
+            onClick={(e) => onReject(movie, e)} title="Reject this movie"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost" size="sm"
+              className={`p-2 rounded-full backdrop-blur-sm ${isSaved ? "bg-blue-500/50 text-white" : "bg-black/50 text-white/80 hover:bg-black/70"}`}
+              onClick={(e) => onToggleSaved(movie, e)} title={isSaved ? "Remove from saved" : "Save movie"}
+            >
+              <Bookmark className={`h-5 w-5 ${isSaved ? "fill-current" : ""}`} />
+            </Button>
+            <Button
+              variant="ghost" size="sm"
+              className={`p-2 rounded-full backdrop-blur-sm ${isWatched ? "bg-green-500/50 text-white" : "bg-black/50 text-white/80 hover:bg-black/70"}`}
+              onClick={(e) => onToggleWatched(movie, e)} title={isWatched ? "Mark as unwatched" : "Mark as watched"}
+            >
+              <Eye className={`h-5 w-5 ${isWatched ? "fill-current" : ""}`} />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <Card
+      className={`overflow-hidden bg-black border transition-all duration-300 w-full rounded-lg ${
+        isWatched
+          ? `${moodColors.border.replace("/60", "/20").replace("/80", "/30")} opacity-60`
+          : `${moodColors.border} ${moodColors.glow}`
+      }`}
+      onTouchStart={(e) => onTouchStart(e, movie)}
+      onTouchEnd={(e) => onTouchEnd(e, movie)}
+    >
+      <div className="hidden md:block" onClick={onCardClick}>
+        <DesktopLayout />
+      </div>
+      <div className="md:hidden">
+        <MobileLayout />
+      </div>
+      {/* Streaming options are already rendered inside each layout beneath text */}
+    </Card>
+  );
 }
